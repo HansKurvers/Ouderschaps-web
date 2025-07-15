@@ -32,8 +32,8 @@ interface PartijData {
   rolId: string
 }
 
-// Feature flag: disable loading existing dossier data due to API issues
-const ENABLE_DOSSIER_LOADING = false
+// Feature flag: enable loading existing dossier data
+const ENABLE_DOSSIER_LOADING = true
 
 export function DossierFormPage() {
   const { dossierId } = useParams()
@@ -115,11 +115,8 @@ export function DossierFormPage() {
           }
         } catch (partijErr) {
           console.error('Error loading partijen:', partijErr)
-          notifications.show({
-            title: 'Let op',
-            message: 'Kon partijen niet laden. U kunt ze opnieuw selecteren.',
-            color: 'yellow',
-          })
+          // Don't show notification for partijen loading errors in edit mode
+          // The user can still edit the dossier number and other details
         }
       } else {
         // Tijdelijke workaround: gebruik default waarden
@@ -179,9 +176,9 @@ export function DossierFormPage() {
       case 0:
         return form.isValid()
       case 1:
-        // In edit mode, we can always proceed from step 1
-        if (isEdit) return true
         return partij1.persoon !== null && partij2.persoon !== null
+      case 2:
+        return true
       default:
         return true
     }
@@ -194,14 +191,52 @@ export function DossierFormPage() {
       let dossier: Dossier
       
       if (isEdit && dossierId) {
-        // Update dossier - alleen dossiernummer updaten
+        // Update dossier - dossiernummer updaten
         console.log('Updating dossier:', dossierId, form.values)
         dossier = await dossierService.updateDossier(dossierId, {
           dossierNummer: form.values.dossierNummer
         })
         
-        // Voor edit mode: we updaten partijen niet automatisch
-        // Dit voorkomt complexe synchronisatie issues
+        // Update partijen in edit mode
+        console.log('Updating partijen for dossier:', dossierId)
+        
+        // First, get existing partijen to compare
+        try {
+          const existingPartijen = await dossierService.getDossierPartijen(dossierId)
+          const existingPartij1 = existingPartijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
+          const existingPartij2 = existingPartijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
+          
+          // Remove old partijen if they exist
+          if (existingPartij1) {
+            await dossierService.removeDossierPartij(dossierId, existingPartij1.dossierPartijId)
+          }
+          if (existingPartij2) {
+            await dossierService.removeDossierPartij(dossierId, existingPartij2.dossierPartijId)
+          }
+          
+          // Add new partijen
+          if (partij1.persoon) {
+            await dossierService.addDossierPartij(dossierId, {
+              persoonId: partij1.persoon.persoonId,
+              rolId: parseInt(partij1.rolId)
+            })
+          }
+          
+          if (partij2.persoon) {
+            await dossierService.addDossierPartij(dossierId, {
+              persoonId: partij2.persoon.persoonId,
+              rolId: parseInt(partij2.rolId)
+            })
+          }
+        } catch (partijErr) {
+          console.error('Error updating partijen:', partijErr)
+          notifications.show({
+            title: 'Waarschuwing',
+            message: 'Dossier bijgewerkt, maar er was een probleem met het bijwerken van partijen',
+            color: 'yellow',
+          })
+        }
+        
         notifications.show({
           title: 'Dossier bijgewerkt!',
           message: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer} is succesvol bijgewerkt`,
@@ -279,23 +314,11 @@ export function DossierFormPage() {
   }
 
   const nextStep = () => {
-    setActive((current) => {
-      // Skip partijen step in edit mode
-      if (isEdit && current === 0) {
-        return 2
-      }
-      return current < 2 ? current + 1 : current
-    })
+    setActive((current) => current < 3 ? current + 1 : current)
   }
   
   const prevStep = () => {
-    setActive((current) => {
-      // Skip partijen step in edit mode
-      if (isEdit && current === 2) {
-        return 0
-      }
-      return current > 0 ? current - 1 : current
-    })
+    setActive((current) => current > 0 ? current - 1 : current)
   }
 
   return (
@@ -324,7 +347,11 @@ export function DossierFormPage() {
           label="Stap 2" 
           description="Partijen selecteren"
           allowStepSelect={canProceed(1)}
-          disabled={isEdit}
+        />
+        <Stepper.Step 
+          label="Stap 3" 
+          description="Controle & Overzicht"
+          allowStepSelect={canProceed(2)}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -352,12 +379,6 @@ export function DossierFormPage() {
         {active === 1 && (
           <Stack>
             <Title order={3}>Selecteer Partijen</Title>
-            {isEdit && (
-              <Alert color="blue" mb="md">
-                Bij het bewerken van een dossier kunnen partijen niet gewijzigd worden. 
-                Maak een nieuw dossier aan als u andere partijen wilt selecteren.
-              </Alert>
-            )}
             
             {/* Partij 1 */}
             <div>
@@ -433,7 +454,7 @@ export function DossierFormPage() {
 
         {active === 2 && (
           <Stack>
-            <Title order={3}>Overzicht</Title>
+            <Title order={3}>Controle & Overzicht</Title>
             <Card withBorder p="md">
               <Text fw={500} mb="xs">Dossier gegevens</Text>
               <Text>Dossiernummer: {form.values.dossierNummer}</Text>

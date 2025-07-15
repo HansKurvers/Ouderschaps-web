@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Container, Title, Table, Button, Group, Loader, Alert, Paper, Text, ActionIcon, Menu } from '@mantine/core'
-import { IconPlus, IconEye, IconEdit, IconTrash, IconDots } from '@tabler/icons-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { IconPlus, IconEdit, IconTrash, IconDots } from '@tabler/icons-react'
+import { useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'
 import { dossierService } from '../services/dossier.service'
 import { Dossier } from '../types/api.types'
@@ -136,13 +136,12 @@ export function DossiersPage() {
                 <Table.Td>
                   <Group gap="xs">
                     <Button
-                      component={Link}
-                      to={`/dossiers/${dossier.id}`}
                       size="xs"
                       variant="light"
-                      leftSection={<IconEye size={16} />}
+                      leftSection={<IconEdit size={16} />}
+                      onClick={() => navigate(`/dossiers/bewerk/${dossier.id}`)}
                     >
-                      Bekijk
+                      Bewerken
                     </Button>
                     <Menu position="bottom-end">
                       <Menu.Target>
@@ -151,12 +150,6 @@ export function DossiersPage() {
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconEdit size={16} />}
-                          onClick={() => navigate(`/dossiers/bewerk/${dossier.id}`)}
-                        >
-                          Bewerken
-                        </Menu.Item>
                         <Menu.Item
                           color="red"
                           leftSection={<IconTrash size={16} />}
