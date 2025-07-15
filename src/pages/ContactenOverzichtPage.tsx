@@ -62,7 +62,7 @@ export function ContactenOverzichtPage() {
         // Haal eerste dossier op om partijen te kunnen ophalen
         const dossiers = await dossierService.getDossiers()
         if (dossiers.length > 0) {
-          const dossierId = dossiers[0].dossierId || dossiers[0].dossier_nummer
+          const dossierId = dossiers[0].dossierId || dossiers[0].dossier_nummer || String(dossiers[0].id)
           const partijen = await dossierService.getDossierPartijen(dossierId)
           // Extract personen uit partijen
           const personenFromPartijen = partijen
