@@ -4,18 +4,29 @@ import { Dossier, DossierPartij, PaginatedResponse } from '../types/api.types'
 export const dossierService = {
   // Haal alle dossiers op voor de ingelogde gebruiker
   async getDossiers(params?: {
-    status?: string
+    includeInactive?: boolean
+    onlyInactive?: boolean
     limit?: number
     offset?: number
   }): Promise<Dossier[]> {
-    // API vereist altijd een status parameter, gebruik 'Nieuw' als default
+    // Default: alleen actieve dossiers (status = false)
     const queryParams = {
-      status: 'Nieuw',
-      ...params
+      includeInactive: params?.includeInactive || false,
+      onlyInactive: params?.onlyInactive || false,
+      limit: params?.limit || 20,
+      offset: params?.offset || 0
     }
     const response = await apiService.get<PaginatedResponse<Dossier>>('/api/dossiers', queryParams)
-    // De API geeft een geneste structuur terug, we extraheren alleen de data array
-    return response.data || []
+    
+    // Map de database velden naar frontend velden
+    const dossiers = response.data || []
+    return dossiers.map(d => ({
+      ...d,
+      naam: `Dossier ${d.dossier_nummer}`,
+      dossierId: d.dossier_nummer,
+      createdAt: d.aangemaakt_op,
+      updatedAt: d.gewijzigd_op
+    }))
   },
 
   // Haal een specifiek dossier op
@@ -28,9 +39,9 @@ export const dossierService = {
     return apiService.post<Dossier>('/api/dossiers', data)
   },
 
-  // Update dossier status
-  async updateDossierStatus(dossierId: string, status: string): Promise<Dossier> {
-    return apiService.put<Dossier>(`/api/dossiers/${dossierId}`, { status })
+  // Update dossier
+  async updateDossier(dossierId: string, data: Partial<Dossier>): Promise<Dossier> {
+    return apiService.put<Dossier>(`/api/dossiers/${dossierId}`, data)
   },
 
   // Verwijder dossier
@@ -41,5 +52,15 @@ export const dossierService = {
   // Haal partijen van een dossier op
   async getDossierPartijen(dossierId: string): Promise<DossierPartij[]> {
     return apiService.get<DossierPartij[]>(`/api/dossiers/${dossierId}/partijen`)
+  },
+
+  // Voeg een partij toe aan een dossier
+  async addDossierPartij(dossierId: string, data: { persoonId: string; rolId: string }): Promise<DossierPartij> {
+    return apiService.post<DossierPartij>(`/api/dossiers/${dossierId}/partijen`, data)
+  },
+
+  // Verwijder een partij uit een dossier
+  async removeDossierPartij(dossierId: string, partijId: string): Promise<void> {
+    return apiService.delete<void>(`/api/dossiers/${dossierId}/partijen/${partijId}`)
   },
 }

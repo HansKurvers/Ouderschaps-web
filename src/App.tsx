@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage'
 import { AboutPage } from './pages/AboutPage'
 import { ContactPage } from './pages/ContactPage'
 import { DossiersPage } from './pages/DossiersPage'
+import { DossierFormPage } from './pages/DossierFormPage'
 import { ContactenOverzichtPage } from './pages/ContactenOverzichtPage'
 import { ContactFormPage } from './pages/ContactFormPage'
 
@@ -23,6 +24,8 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
             <Route path="dossiers" element={<DossiersPage />} />
+            <Route path="dossiers/nieuw" element={<DossierFormPage />} />
+            <Route path="dossiers/bewerk/:dossierId" element={<DossierFormPage />} />
             <Route path="contacten" element={<ContactenOverzichtPage />} />
             <Route path="contacten/nieuw" element={<ContactFormPage />} />
             <Route path="contacten/bewerk/:persoonId" element={<ContactFormPage />} />

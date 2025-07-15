@@ -1,11 +1,15 @@
 export interface Dossier {
-  _id: string
-  dossierId: string
-  naam: string
-  status: string
-  gebruikerId: string
-  createdAt: string
-  updatedAt: string
+  id: number
+  dossier_nummer: string
+  aangemaakt_op: string
+  gewijzigd_op: string
+  gebruiker_id: number
+  status: boolean
+  // Frontend display fields
+  naam?: string
+  dossierId?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Persoon {

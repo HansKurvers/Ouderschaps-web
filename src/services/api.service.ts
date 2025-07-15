@@ -4,7 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://ouderschaps-api-fvgbfwa
 const USER_ID = '1'
 
 interface RequestOptions extends RequestInit {
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | boolean | undefined>
 }
 
 class ApiService {
@@ -65,7 +65,7 @@ class ApiService {
   }
 
   // GET request
-  async get<T>(endpoint: string, params?: Record<string, string | number | undefined>): Promise<T> {
+  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET', params })
   }
 
