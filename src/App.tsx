@@ -6,7 +6,8 @@ import { HomePage } from './pages/HomePage'
 import { AboutPage } from './pages/AboutPage'
 import { ContactPage } from './pages/ContactPage'
 import { DossiersPage } from './pages/DossiersPage'
-import { ContactenPage } from './pages/ContactenPage'
+import { ContactenOverzichtPage } from './pages/ContactenOverzichtPage'
+import { ContactFormPage } from './pages/ContactFormPage'
 
 const theme = createTheme({
   primaryColor: 'blue',
@@ -22,7 +23,9 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
             <Route path="dossiers" element={<DossiersPage />} />
-            <Route path="contacten" element={<ContactenPage />} />
+            <Route path="contacten" element={<ContactenOverzichtPage />} />
+            <Route path="contacten/nieuw" element={<ContactFormPage />} />
+            <Route path="contacten/bewerk/:persoonId" element={<ContactFormPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="contact" element={<ContactPage />} />
           </Route>

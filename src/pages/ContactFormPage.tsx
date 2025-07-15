@@ -15,7 +15,8 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { IconUserPlus } from '@tabler/icons-react'
+import { IconUserPlus, IconDeviceFloppy } from '@tabler/icons-react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { persoonService } from '../services/persoon.service'
 import { rolService } from '../services/rol.service'
 import { Persoon, Rol } from '../types/api.types'
@@ -32,7 +33,11 @@ interface ContactFormValues {
   rolId: string
 }
 
-export function ContactenPage() {
+export function ContactFormPage() {
+  const { persoonId } = useParams()
+  const navigate = useNavigate()
+  const isEdit = !!persoonId
+  
   const [rollen, setRollen] = useState<Rol[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +67,10 @@ export function ContactenPage() {
 
   useEffect(() => {
     loadRollen()
-  }, [])
+    if (isEdit && persoonId) {
+      loadPersoon(persoonId)
+    }
+  }, [isEdit, persoonId])
 
   const loadRollen = async () => {
     try {
@@ -74,6 +82,30 @@ export function ContactenPage() {
       setError(err instanceof Error ? err.message : 'Er is een fout opgetreden bij het laden van rollen')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPersoon = async (id: string) => {
+    try {
+      const persoon = await persoonService.getPersoon(id)
+      form.setValues({
+        voornamen: persoon.voornamen || '',
+        tussenvoegsel: persoon.tussenvoegsel || '',
+        achternaam: persoon.achternaam,
+        email: persoon.email || '',
+        telefoon: persoon.telefoon || '',
+        adres: persoon.adres || '',
+        postcode: persoon.postcode || '',
+        plaats: persoon.plaats || '',
+        rolId: '1', // TODO: Get actual role from dossier partij
+      })
+    } catch (err) {
+      notifications.show({
+        title: 'Fout',
+        message: 'Kon contact niet laden',
+        color: 'red',
+      })
+      navigate('/contacten')
     }
   }
 
@@ -93,19 +125,29 @@ export function ContactenPage() {
         plaats: values.plaats || undefined,
       }
 
-      // Maak de persoon aan
-      const nieuwePersoon = await persoonService.createPersoon(persoonData)
+      let resultPersoon: Persoon
       
-      const selectedRol = rollen.find(r => String(r.id) === values.rolId)
-      //TODO los huisnummer veld voor validatie en api
-      notifications.show({
-        title: 'Contact aangemaakt!',
-        message: `${nieuwePersoon.voornamen || ''} ${nieuwePersoon.achternaam} is toegevoegd als ${selectedRol?.naam || 'contact'}`,
-        color: 'green',
-      })
+      if (isEdit && persoonId) {
+        // Update bestaande persoon
+        resultPersoon = await persoonService.updatePersoon(persoonId, persoonData)
+        notifications.show({
+          title: 'Contact bijgewerkt!',
+          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
+          color: 'green',
+        })
+      } else {
+        // Maak nieuwe persoon aan
+        resultPersoon = await persoonService.createPersoon(persoonData)
+        const selectedRol = rollen.find(r => String(r.id) === values.rolId)
+        notifications.show({
+          title: 'Contact aangemaakt!',
+          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is toegevoegd als ${selectedRol?.naam || 'contact'}`,
+          color: 'green',
+        })
+      }
       
-      // Reset het formulier
-      form.reset()
+      // Navigeer terug naar overzicht
+      navigate('/contacten')
     } catch (err) {
       notifications.show({
         title: 'Fout',
@@ -139,7 +181,7 @@ export function ContactenPage() {
 
   return (
     <Container>
-      <Title order={1} mb="xl">Nieuwe Contact Toevoegen</Title>
+      <Title order={1} mb="xl">{isEdit ? 'Contact Bewerken' : 'Nieuwe Contact Toevoegen'}</Title>
       
       <Paper shadow="sm" p="xl" radius="md" withBorder>
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -235,9 +277,9 @@ export function ContactenPage() {
               <Button 
                 type="submit" 
                 loading={submitting}
-                leftSection={<IconUserPlus size={20} />}
+                leftSection={isEdit ? <IconDeviceFloppy size={20} /> : <IconUserPlus size={20} />}
               >
-                Contact Toevoegen
+                {isEdit ? 'Opslaan' : 'Contact Toevoegen'}
               </Button>
             </Group>
           </Stack>
