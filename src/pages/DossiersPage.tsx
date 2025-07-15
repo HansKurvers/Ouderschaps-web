@@ -27,21 +27,11 @@ export function DossiersPage() {
       // Haal alle dossiers op (inclusief inactieve)
       const data = await dossierService.getDossiers({ includeInactive: true })
       
-      // Laad display namen voor elk dossier
-      const dossiersWithNames = await Promise.all(
-        data.map(async (dossier) => {
-          try {
-            const displayNaam = await dossierService.getDossierDisplayNaam(String(dossier.id))
-            return { ...dossier, displayNaam }
-          } catch (err) {
-            // Als het laden van de naam faalt, gebruik het dossiernummer
-            return { 
-              ...dossier, 
-              displayNaam: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer || dossier.id}` 
-            }
-          }
-        })
-      )
+      // Gebruik alleen dossiernummer als display naam
+      const dossiersWithNames = data.map(dossier => ({
+        ...dossier,
+        displayNaam: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer || dossier.id}`
+      }))
       
       setDossiers(dossiersWithNames)
     } catch (err) {
