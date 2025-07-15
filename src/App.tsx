@@ -5,6 +5,8 @@ import { MainLayout } from './layouts/MainLayout'
 import { HomePage } from './pages/HomePage'
 import { AboutPage } from './pages/AboutPage'
 import { ContactPage } from './pages/ContactPage'
+import { DossiersPage } from './pages/DossiersPage'
+import { ContactenPage } from './pages/ContactenPage'
 
 const theme = createTheme({
   primaryColor: 'blue',
@@ -19,6 +21,8 @@ function App() {
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
+            <Route path="dossiers" element={<DossiersPage />} />
+            <Route path="contacten" element={<ContactenPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="contact" element={<ContactPage />} />
           </Route>

@@ -1,5 +1,5 @@
 import { NavLink } from '@mantine/core'
-import { IconHome, IconInfoCircle, IconPhone } from '@tabler/icons-react'
+import { IconHome, IconInfoCircle, IconPhone, IconFolder, IconUsers } from '@tabler/icons-react'
 import { Link, useLocation } from 'react-router-dom'
 
 export function Navigation() {
@@ -7,6 +7,8 @@ export function Navigation() {
 
   const links = [
     { label: 'Home', icon: IconHome, to: '/' },
+    { label: 'Dossiers', icon: IconFolder, to: '/dossiers' },
+    { label: 'Contacten', icon: IconUsers, to: '/contacten' },
     { label: 'Over Ons', icon: IconInfoCircle, to: '/about' },
     { label: 'Contact', icon: IconPhone, to: '/contact' },
   ]

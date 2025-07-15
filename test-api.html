@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="result"></pre>
+    
+    <script>
+        async function testAPI() {
+            const resultEl = document.getElementById('result');
+            
+            try {
+                // Test 1: Zonder parameters
+                const response1 = await fetch('https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net/api/dossiers', {
+                    headers: {
+                        'x-user-id': '1'
+                    }
+                });
+                const data1 = await response1.json();
+                resultEl.textContent += 'Test 1 (zonder params):\n' + JSON.stringify(data1, null, 2) + '\n\n';
+                
+                // Test 2: Met lege status
+                const response2 = await fetch('https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net/api/dossiers?status=', {
+                    headers: {
+                        'x-user-id': '1'
+                    }
+                });
+                const data2 = await response2.json();
+                resultEl.textContent += 'Test 2 (met lege status):\n' + JSON.stringify(data2, null, 2) + '\n\n';
+                
+                // Test 3: Met status=open
+                const response3 = await fetch('https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net/api/dossiers?status=open', {
+                    headers: {
+                        'x-user-id': '1'
+                    }
+                });
+                const data3 = await response3.json();
+                resultEl.textContent += 'Test 3 (met status=open):\n' + JSON.stringify(data3, null, 2) + '\n\n';
+                
+            } catch (error) {
+                resultEl.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
