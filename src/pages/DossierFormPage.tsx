@@ -136,9 +136,7 @@ export function DossierFormPage() {
       case 0:
         return form.isValid()
       case 1:
-        return partij1.persoon !== null
-      case 2:
-        return partij2.persoon !== null
+        return partij1.persoon !== null && partij2.persoon !== null
       default:
         return true
     }
@@ -223,7 +221,7 @@ export function DossierFormPage() {
     }
   }
 
-  const nextStep = () => setActive((current) => (current < 3 ? current + 1 : current))
+  const nextStep = () => setActive((current) => (current < 2 ? current + 1 : current))
   const prevStep = () => setActive((current) => (current > 0 ? current - 1 : current))
 
   return (
@@ -250,13 +248,8 @@ export function DossierFormPage() {
         />
         <Stepper.Step 
           label="Stap 2" 
-          description="Partij 1 selecteren"
+          description="Partijen selecteren"
           allowStepSelect={canProceed(1)}
-        />
-        <Stepper.Step 
-          label="Stap 3" 
-          description="Partij 2 selecteren"
-          allowStepSelect={canProceed(2)}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -289,77 +282,81 @@ export function DossierFormPage() {
 
         {active === 1 && (
           <Stack>
-            <Title order={3}>Selecteer Partij 1</Title>
-            {partij1.persoon ? (
-              <Card withBorder p="md">
-                <Group justify="space-between">
-                  <div>
-                    <Text fw={500}>{getVolledigeNaam(partij1.persoon)}</Text>
-                    <Text size="sm" c="dimmed">{partij1.persoon.email || 'Geen email'}</Text>
-                    <Badge mt="xs">{rollen.find(r => String(r.id) === partij1.rolId)?.naam || 'Partij 1'}</Badge>
-                  </div>
-                  <Button
-                    variant="light"
-                    onClick={() => {
-                      setSelectingPartij(1)
-                      setSelectModalOpen(true)
-                    }}
-                  >
-                    Wijzig persoon
-                  </Button>
-                </Group>
-              </Card>
-            ) : (
-              <Button
-                leftSection={<IconUserPlus size={20} />}
-                onClick={() => {
-                  setSelectingPartij(1)
-                  setSelectModalOpen(true)
-                }}
-              >
-                Selecteer persoon
-              </Button>
-            )}
+            <Title order={3}>Selecteer Partijen</Title>
+            
+            {/* Partij 1 */}
+            <div>
+              <Text fw={500} mb="sm">Partij 1</Text>
+              {partij1.persoon ? (
+                <Card withBorder p="md">
+                  <Group justify="space-between">
+                    <div>
+                      <Text fw={500}>{getVolledigeNaam(partij1.persoon)}</Text>
+                      <Text size="sm" c="dimmed">{partij1.persoon.email || 'Geen email'}</Text>
+                      <Badge mt="xs">{rollen.find(r => String(r.id) === partij1.rolId)?.naam || 'Partij 1'}</Badge>
+                    </div>
+                    <Button
+                      variant="light"
+                      onClick={() => {
+                        setSelectingPartij(1)
+                        setSelectModalOpen(true)
+                      }}
+                    >
+                      Wijzig persoon
+                    </Button>
+                  </Group>
+                </Card>
+              ) : (
+                <Button
+                  leftSection={<IconUserPlus size={20} />}
+                  onClick={() => {
+                    setSelectingPartij(1)
+                    setSelectModalOpen(true)
+                  }}
+                >
+                  Selecteer persoon voor Partij 1
+                </Button>
+              )}
+            </div>
+
+            {/* Partij 2 */}
+            <div>
+              <Text fw={500} mb="sm">Partij 2</Text>
+              {partij2.persoon ? (
+                <Card withBorder p="md">
+                  <Group justify="space-between">
+                    <div>
+                      <Text fw={500}>{getVolledigeNaam(partij2.persoon)}</Text>
+                      <Text size="sm" c="dimmed">{partij2.persoon.email || 'Geen email'}</Text>
+                      <Badge mt="xs">{rollen.find(r => String(r.id) === partij2.rolId)?.naam || 'Partij 2'}</Badge>
+                    </div>
+                    <Button
+                      variant="light"
+                      onClick={() => {
+                        setSelectingPartij(2)
+                        setSelectModalOpen(true)
+                      }}
+                    >
+                      Wijzig persoon
+                    </Button>
+                  </Group>
+                </Card>
+              ) : (
+                <Button
+                  leftSection={<IconUserPlus size={20} />}
+                  onClick={() => {
+                    setSelectingPartij(2)
+                    setSelectModalOpen(true)
+                  }}
+                >
+                  Selecteer persoon voor Partij 2
+                </Button>
+              )}
+            </div>
           </Stack>
         )}
 
         {active === 2 && (
-          <Stack>
-            <Title order={3}>Selecteer Partij 2</Title>
-            {partij2.persoon ? (
-              <Card withBorder p="md">
-                <Group justify="space-between">
-                  <div>
-                    <Text fw={500}>{getVolledigeNaam(partij2.persoon)}</Text>
-                    <Text size="sm" c="dimmed">{partij2.persoon.email || 'Geen email'}</Text>
-                    <Badge mt="xs">{rollen.find(r => String(r.id) === partij2.rolId)?.naam || 'Partij 2'}</Badge>
-                  </div>
-                  <Button
-                    variant="light"
-                    onClick={() => {
-                      setSelectingPartij(2)
-                      setSelectModalOpen(true)
-                    }}
-                  >
-                    Wijzig persoon
-                  </Button>
-                </Group>
-              </Card>
-            ) : (
-              <Button
-                leftSection={<IconUserPlus size={20} />}
-                onClick={() => {
-                  setSelectingPartij(2)
-                  setSelectModalOpen(true)
-                }}
-              >
-                Selecteer persoon
-              </Button>
-            )}
-          </Stack>
-        )}
-
-        {active === 3 && (
           <Stack>
             <Title order={3}>Overzicht</Title>
             <Card withBorder p="md">
@@ -404,7 +401,7 @@ export function DossierFormPage() {
             Vorige
           </Button>
           
-          {active === 3 ? (
+          {active === 2 ? (
             <Button onClick={handleSubmit} loading={loading}>
               {isEdit ? 'Opslaan' : 'Dossier Aanmaken'}
             </Button>
