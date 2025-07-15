@@ -1,9 +1,14 @@
 export interface Dossier {
   id: number
-  dossier_nummer: string
-  aangemaakt_op: string
-  gewijzigd_op: string
-  gebruiker_id: number
+  // Both snake_case and camelCase versions for API compatibility
+  dossier_nummer?: string
+  dossierNummer?: string
+  aangemaakt_op?: string
+  aangemaaktOp?: string
+  gewijzigd_op?: string
+  gewijzigdOp?: string
+  gebruiker_id?: number
+  gebruikerId?: number
   status: boolean
   // Frontend display fields
   naam?: string

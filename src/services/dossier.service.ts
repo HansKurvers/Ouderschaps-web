@@ -20,12 +20,17 @@ export const dossierService = {
     
     // Map de database velden naar frontend velden
     const dossiers = response.data || []
-    return dossiers.map(d => ({
+    return dossiers.map((d: any) => ({
       ...d,
-      naam: `Dossier ${d.dossier_nummer}`,
-      dossierId: d.dossier_nummer,
-      createdAt: d.aangemaakt_op,
-      updatedAt: d.gewijzigd_op
+      naam: `Dossier ${d.dossierNummer || d.dossier_nummer}`,
+      dossierId: d.dossierNummer || d.dossier_nummer,
+      createdAt: d.aangemaaktOp || d.aangemaakt_op,
+      updatedAt: d.gewijzigdOp || d.gewijzigd_op,
+      // Keep original fields for compatibility
+      dossier_nummer: d.dossierNummer || d.dossier_nummer,
+      aangemaakt_op: d.aangemaaktOp || d.aangemaakt_op,
+      gewijzigd_op: d.gewijzigdOp || d.gewijzigd_op,
+      gebruiker_id: d.gebruikerId || d.gebruiker_id
     }))
   },
 

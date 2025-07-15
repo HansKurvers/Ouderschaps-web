@@ -20,8 +20,8 @@ export function DossiersPage() {
     try {
       setLoading(true)
       setError(null)
-      // Probeer zonder parameters eerst
-      const data = await dossierService.getDossiers()
+      // Haal alle dossiers op (inclusief inactieve)
+      const data = await dossierService.getDossiers({ includeInactive: true })
       setDossiers(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Er is een fout opgetreden')
@@ -54,12 +54,12 @@ export function DossiersPage() {
 
   const getStatusColor = (status: boolean) => {
     // status false = actief, status true = inactief
-    return status ? 'gray' : 'green'
+    return status ? 'green' : 'gray'
   }
   
   const getStatusLabel = (status: boolean) => {
     // status false = actief, status true = inactief
-    return status ? 'Inactief' : 'Actief'
+    return status ? 'Actief' : 'Inactief'
   }
 
   if (loading) {

@@ -7,7 +7,7 @@ interface FormValues {
   email: string
   message: string
 }
-
+//TODO: rollen niet op contact pagina maar gebonden aan dossier
 export function ContactPage() {
   const form = useForm<FormValues>({
     initialValues: {
