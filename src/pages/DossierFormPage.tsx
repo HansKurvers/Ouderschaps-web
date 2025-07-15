@@ -67,6 +67,8 @@ export function DossierFormPage() {
     loadRollen()
     if (isEdit && dossierId) {
       loadDossier(dossierId)
+      // Skip dossier number step in edit mode
+      setActive(1)
     }
   }, [isEdit, dossierId])
 
@@ -174,7 +176,9 @@ export function DossierFormPage() {
   const canProceed = (step: number) => {
     switch (step) {
       case 0:
-        return form.isValid()
+        // In edit mode, always allow proceeding since dossier number is disabled
+        // In create mode, validate the form
+        return isEdit ? true : form.isValid()
       case 1:
         return partij1.persoon !== null && partij2.persoon !== null
       case 2:
@@ -191,11 +195,9 @@ export function DossierFormPage() {
       let dossier: Dossier
       
       if (isEdit && dossierId) {
-        // Update dossier - dossiernummer updaten
-        console.log('Updating dossier:', dossierId, form.values)
-        dossier = await dossierService.updateDossier(dossierId, {
-          dossierNummer: form.values.dossierNummer
-        })
+        // Update dossier - get existing dossier data since dossierNummer cannot be updated
+        console.log('Updating dossier:', dossierId)
+        dossier = await dossierService.getDossier(dossierId)
         
         // Update partijen in edit mode
         console.log('Updating partijen for dossier:', dossierId)
@@ -318,7 +320,11 @@ export function DossierFormPage() {
   }
   
   const prevStep = () => {
-    setActive((current) => current > 0 ? current - 1 : current)
+    setActive((current) => {
+      // In edit mode, don't go below step 1 (partijen selection)
+      const minStep = isEdit ? 1 : 0
+      return current > minStep ? current - 1 : current
+    })
   }
 
   return (
@@ -342,6 +348,7 @@ export function DossierFormPage() {
           label="Stap 1" 
           description="Dossier gegevens"
           allowStepSelect={canProceed(0)}
+          disabled={isEdit}
         />
         <Stepper.Step 
           label="Stap 2" 
@@ -495,7 +502,7 @@ export function DossierFormPage() {
           <Button 
             variant="default" 
             onClick={prevStep}
-            disabled={active === 0}
+            disabled={active === (isEdit ? 1 : 0)}
             leftSection={<IconArrowLeft size={16} />}
           >
             Vorige
