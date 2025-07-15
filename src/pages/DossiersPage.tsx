@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Container, Title, Table, Badge, Button, Group, Loader, Alert, Paper, Text, ActionIcon, Menu } from '@mantine/core'
+import { Container, Title, Table, Button, Group, Loader, Alert, Paper, Text, ActionIcon, Menu } from '@mantine/core'
 import { IconPlus, IconEye, IconEdit, IconTrash, IconDots } from '@tabler/icons-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'
 import { dossierService } from '../services/dossier.service'
 import { Dossier } from '../types/api.types'
 
+interface DossierWithDisplay extends Dossier {
+  displayNaam?: string
+}
+
 export function DossiersPage() {
   const navigate = useNavigate()
-  const [dossiers, setDossiers] = useState<Dossier[]>([])
+  const [dossiers, setDossiers] = useState<DossierWithDisplay[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,7 +26,24 @@ export function DossiersPage() {
       setError(null)
       // Haal alle dossiers op (inclusief inactieve)
       const data = await dossierService.getDossiers({ includeInactive: true })
-      setDossiers(data)
+      
+      // Laad display namen voor elk dossier
+      const dossiersWithNames = await Promise.all(
+        data.map(async (dossier) => {
+          try {
+            const displayNaam = await dossierService.getDossierDisplayNaam(String(dossier.id))
+            return { ...dossier, displayNaam }
+          } catch (err) {
+            // Als het laden van de naam faalt, gebruik het dossiernummer
+            return { 
+              ...dossier, 
+              displayNaam: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer || dossier.id}` 
+            }
+          }
+        })
+      )
+      
+      setDossiers(dossiersWithNames)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Er is een fout opgetreden')
     } finally {
@@ -52,15 +73,6 @@ export function DossiersPage() {
     }
   }
 
-  const getStatusColor = (status: boolean) => {
-    // status false = actief, status true = inactief
-    return status ? 'green' : 'gray'
-  }
-  
-  const getStatusLabel = (status: boolean) => {
-    // status false = actief, status true = inactief
-    return status ? 'Actief' : 'Inactief'
-  }
 
   if (loading) {
     return (
@@ -105,7 +117,6 @@ export function DossiersPage() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Naam</Table.Th>
-              <Table.Th>Status</Table.Th>
               <Table.Th>Aangemaakt</Table.Th>
               <Table.Th>Laatst gewijzigd</Table.Th>
               <Table.Th>Acties</Table.Th>
@@ -114,23 +125,29 @@ export function DossiersPage() {
           <Table.Tbody>
             {dossiers.map((dossier) => (
               <Table.Tr key={dossier.id}>
-                <Table.Td>{dossier.naam}</Table.Td>
                 <Table.Td>
-                  <Badge color={getStatusColor(dossier.status)}>
-                    {getStatusLabel(dossier.status)}
-                  </Badge>
+                  <div>
+                    <Text>{dossier.displayNaam || `Dossier ${dossier.dossierNummer || dossier.dossier_nummer}`}</Text>
+                    <Text size="xs" c="dimmed">#{dossier.dossierNummer || dossier.dossier_nummer}</Text>
+                  </div>
                 </Table.Td>
                 <Table.Td>
-                  {new Date(dossier.createdAt || dossier.aangemaakt_op).toLocaleDateString('nl-NL')}
+                  {(dossier.createdAt || dossier.aangemaakt_op) 
+                    ? new Date(dossier.createdAt || dossier.aangemaakt_op || '').toLocaleDateString('nl-NL')
+                    : '-'
+                  }
                 </Table.Td>
                 <Table.Td>
-                  {new Date(dossier.updatedAt || dossier.gewijzigd_op).toLocaleDateString('nl-NL')}
+                  {(dossier.updatedAt || dossier.gewijzigd_op)
+                    ? new Date(dossier.updatedAt || dossier.gewijzigd_op || '').toLocaleDateString('nl-NL')
+                    : '-'
+                  }
                 </Table.Td>
                 <Table.Td>
                   <Group gap="xs">
                     <Button
                       component={Link}
-                      to={`/dossiers/${dossier.dossierId || dossier.dossier_nummer}`}
+                      to={`/dossiers/${dossier.id}`}
                       size="xs"
                       variant="light"
                       leftSection={<IconEye size={16} />}
@@ -146,14 +163,14 @@ export function DossiersPage() {
                       <Menu.Dropdown>
                         <Menu.Item
                           leftSection={<IconEdit size={16} />}
-                          onClick={() => navigate(`/dossiers/bewerk/${dossier.dossierId || dossier.dossier_nummer}`)}
+                          onClick={() => navigate(`/dossiers/bewerk/${dossier.id}`)}
                         >
                           Bewerken
                         </Menu.Item>
                         <Menu.Item
                           color="red"
                           leftSection={<IconTrash size={16} />}
-                          onClick={() => handleDelete(dossier.dossierId || dossier.dossier_nummer, dossier.naam || `Dossier ${dossier.dossier_nummer}`)}
+                          onClick={() => handleDelete(String(dossier.id), dossier.displayNaam || `Dossier ${dossier.dossierNummer || dossier.dossier_nummer}`)}
                         >
                           Verwijderen
                         </Menu.Item>

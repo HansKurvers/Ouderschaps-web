@@ -40,12 +40,18 @@ class ApiService {
     headers.set('x-user-id', USER_ID) //TODO update when auth is implemented
 
     try {
+      console.log(`API Request: ${fetchOptions.method || 'GET'} ${url.toString()}`)
+      if (fetchOptions.body) {
+        console.log('Request body:', fetchOptions.body)
+      }
+      
       const response = await fetch(url.toString(), {
         ...fetchOptions,
         headers,
       })
 
       const responseData = await response.json()
+      console.log(`API Response (${response.status}):`, responseData)
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} - ${JSON.stringify(responseData)}`)

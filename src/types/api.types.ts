@@ -9,7 +9,7 @@ export interface Dossier {
   gewijzigdOp?: string
   gebruiker_id?: number
   gebruikerId?: number
-  status: boolean
+  status?: boolean
   // Frontend display fields
   naam?: string
   dossierId?: string

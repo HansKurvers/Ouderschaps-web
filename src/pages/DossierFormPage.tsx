@@ -6,7 +6,6 @@ import {
   Button,
   Group,
   TextInput,
-  Select,
   Paper,
   Stack,
   Text,
@@ -25,14 +24,16 @@ import { Dossier, Persoon, Rol } from '../types/api.types'
 import { PersonenSelectModal } from '../components/PersonenSelectModal'
 
 interface DossierFormValues {
-  naam: string
-  status: boolean
+  dossierNummer: string
 }
 
 interface PartijData {
   persoon: Persoon | null
   rolId: string
 }
+
+// Feature flag: disable loading existing dossier data due to API issues
+const ENABLE_DOSSIER_LOADING = false
 
 export function DossierFormPage() {
   const { dossierId } = useParams()
@@ -51,11 +52,14 @@ export function DossierFormPage() {
 
   const form = useForm<DossierFormValues>({
     initialValues: {
-      naam: '',
-      status: false // false = actief
+      dossierNummer: ''
     },
     validate: {
-      naam: (value) => (value.trim().length < 3 ? 'Naam moet minimaal 3 karakters zijn' : null),
+      dossierNummer: (value) => {
+        if (!value || value.trim().length === 0) return 'Dossiernummer is verplicht'
+        if (!/^\d+$/.test(value)) return 'Dossiernummer moet een getal zijn'
+        return null
+      }
     }
   })
 
@@ -78,25 +82,64 @@ export function DossierFormPage() {
   const loadDossier = async (id: string) => {
     try {
       setLoading(true)
-      const dossier = await dossierService.getDossier(id)
-      form.setValues({
-        naam: dossier.naam || `Dossier ${dossier.dossier_nummer}`,
-        status: dossier.status
-      })
       
-      // Load partijen
-      const partijen = await dossierService.getDossierPartijen(id)
-      partijen.forEach((partij, index) => {
-        if (index === 0 && partij.persoon) {
-          setPartij1({ persoon: partij.persoon, rolId: partij.rolId })
-        } else if (index === 1 && partij.persoon) {
-          setPartij2({ persoon: partij.persoon, rolId: partij.rolId })
+      if (ENABLE_DOSSIER_LOADING) {
+        // Normale loading flow
+        console.log('Loading dossier with ID:', id)
+        
+        // Probeer het dossier op te halen
+        const dossier = await dossierService.getDossier(id)
+        console.log('Loaded dossier:', dossier)
+        
+        // Zet de form values
+        form.setValues({
+          dossierNummer: dossier.dossierNummer || dossier.dossier_nummer || ''
+        })
+        
+        // Probeer de partijen op te halen
+        try {
+          const partijen = await dossierService.getDossierPartijen(id)
+          console.log('Loaded partijen:', partijen)
+          
+          // Map de partijen naar partij1 en partij2
+          if (partijen && partijen.length > 0) {
+            const partij1Data = partijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
+            const partij2Data = partijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
+            
+            if (partij1Data && partij1Data.persoon) {
+              setPartij1({ persoon: partij1Data.persoon, rolId: partij1Data.rolId })
+            }
+            if (partij2Data && partij2Data.persoon) {
+              setPartij2({ persoon: partij2Data.persoon, rolId: partij2Data.rolId })
+            }
+          }
+        } catch (partijErr) {
+          console.error('Error loading partijen:', partijErr)
+          notifications.show({
+            title: 'Let op',
+            message: 'Kon partijen niet laden. U kunt ze opnieuw selecteren.',
+            color: 'yellow',
+          })
         }
-      })
+      } else {
+        // Tijdelijke workaround: gebruik default waarden
+        console.log('Dossier loading disabled, using default values for ID:', id)
+        // Voor edit mode kunnen we het dossiernummer niet weten zonder de API
+        form.setValues({
+          dossierNummer: ''
+        })
+        
+        notifications.show({
+          title: 'Let op',
+          message: 'Dossier data laden is tijdelijk uitgeschakeld.',
+          color: 'yellow',
+        })
+      }
     } catch (err) {
+      console.error('Error loading dossier:', err)
       notifications.show({
         title: 'Fout',
-        message: 'Kon dossier niet laden',
+        message: err instanceof Error ? err.message : 'Kon dossier niet laden',
         color: 'red',
       })
       navigate('/dossiers')
@@ -136,6 +179,8 @@ export function DossierFormPage() {
       case 0:
         return form.isValid()
       case 1:
+        // In edit mode, we can always proceed from step 1
+        if (isEdit) return true
         return partij1.persoon !== null && partij2.persoon !== null
       default:
         return true
@@ -149,44 +194,56 @@ export function DossierFormPage() {
       let dossier: Dossier
       
       if (isEdit && dossierId) {
-        // Update dossier
+        // Update dossier - alleen dossiernummer updaten
+        console.log('Updating dossier:', dossierId, form.values)
         dossier = await dossierService.updateDossier(dossierId, {
-          naam: form.values.naam,
-          status: form.values.status
+          dossierNummer: form.values.dossierNummer
+        })
+        
+        // Voor edit mode: we updaten partijen niet automatisch
+        // Dit voorkomt complexe synchronisatie issues
+        notifications.show({
+          title: 'Dossier bijgewerkt!',
+          message: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer} is succesvol bijgewerkt`,
+          color: 'green',
         })
       } else {
         // Create new dossier
+        console.log('Creating dossier:', form.values)
         dossier = await dossierService.createDossier({
-          naam: form.values.naam,
-          status: form.values.status
+          dossierNummer: form.values.dossierNummer
+        })
+        
+        // Add partijen alleen voor nieuwe dossiers
+        const dossierIdToUse = String(dossier.id) // Gebruik het database ID
+        console.log('Adding partijen to dossier:', dossierIdToUse)
+        
+        if (partij1.persoon && dossierIdToUse) {
+          console.log('Adding partij 1:', partij1.persoon.persoonId, 'rol:', partij1.rolId)
+          await dossierService.addDossierPartij(dossierIdToUse, {
+            persoonId: partij1.persoon.persoonId,
+            rolId: parseInt(partij1.rolId)
+          })
+        }
+        
+        if (partij2.persoon && dossierIdToUse) {
+          console.log('Adding partij 2:', partij2.persoon.persoonId, 'rol:', partij2.rolId)
+          await dossierService.addDossierPartij(dossierIdToUse, {
+            persoonId: partij2.persoon.persoonId,
+            rolId: parseInt(partij2.rolId)
+          })
+        }
+        
+        notifications.show({
+          title: 'Dossier aangemaakt!',
+          message: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer} is succesvol aangemaakt`,
+          color: 'green',
         })
       }
-      
-      // Add partijen
-      const dossierIdToUse = dossier.dossierId || dossier.dossier_nummer
-      
-      if (partij1.persoon && !isEdit && dossierIdToUse) {
-        await dossierService.addDossierPartij(dossierIdToUse, {
-          persoonId: partij1.persoon.persoonId,
-          rolId: partij1.rolId
-        })
-      }
-      
-      if (partij2.persoon && !isEdit && dossierIdToUse) {
-        await dossierService.addDossierPartij(dossierIdToUse, {
-          persoonId: partij2.persoon.persoonId,
-          rolId: partij2.rolId
-        })
-      }
-      
-      notifications.show({
-        title: isEdit ? 'Dossier bijgewerkt!' : 'Dossier aangemaakt!',
-        message: `Dossier "${dossier.naam || `Dossier ${dossier.dossier_nummer}`}" is succesvol ${isEdit ? 'bijgewerkt' : 'aangemaakt'}`,
-        color: 'green',
-      })
       
       navigate('/dossiers')
     } catch (err) {
+      console.error('Error submitting dossier:', err)
       notifications.show({
         title: 'Fout',
         message: err instanceof Error ? err.message : 'Er is een fout opgetreden',
@@ -221,8 +278,25 @@ export function DossierFormPage() {
     }
   }
 
-  const nextStep = () => setActive((current) => (current < 2 ? current + 1 : current))
-  const prevStep = () => setActive((current) => (current > 0 ? current - 1 : current))
+  const nextStep = () => {
+    setActive((current) => {
+      // Skip partijen step in edit mode
+      if (isEdit && current === 0) {
+        return 2
+      }
+      return current < 2 ? current + 1 : current
+    })
+  }
+  
+  const prevStep = () => {
+    setActive((current) => {
+      // Skip partijen step in edit mode
+      if (isEdit && current === 2) {
+        return 0
+      }
+      return current > 0 ? current - 1 : current
+    })
+  }
 
   return (
     <Container>
@@ -250,10 +324,14 @@ export function DossierFormPage() {
           label="Stap 2" 
           description="Partijen selecteren"
           allowStepSelect={canProceed(1)}
+          disabled={isEdit}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
-            Alle stappen voltooid! Controleer de gegevens en klik op "Opslaan" om het dossier aan te maken.
+            {isEdit 
+              ? 'Controleer de gegevens en klik op "Opslaan" om het dossier bij te werken.'
+              : 'Alle stappen voltooid! Controleer de gegevens en klik op "Dossier Aanmaken" om het dossier aan te maken.'
+            }
           </Alert>
         </Stepper.Completed>
       </Stepper>
@@ -263,19 +341,10 @@ export function DossierFormPage() {
           <Stack>
             <Title order={3}>Dossier Gegevens</Title>
             <TextInput
-              label="Dossier naam"
-              placeholder="Bijvoorbeeld: Scheiding Familie Jansen"
+              label="Dossiernummer"
+              placeholder="Bijvoorbeeld: 12345"
               required
-              {...form.getInputProps('naam')}
-            />
-            <Select
-              label="Status"
-              data={[
-                { value: 'false', label: 'Actief' },
-                { value: 'true', label: 'Inactief' }
-              ]}
-              value={String(form.values.status)}
-              onChange={(value) => form.setFieldValue('status', value === 'true')}
+              {...form.getInputProps('dossierNummer')}
             />
           </Stack>
         )}
@@ -283,6 +352,12 @@ export function DossierFormPage() {
         {active === 1 && (
           <Stack>
             <Title order={3}>Selecteer Partijen</Title>
+            {isEdit && (
+              <Alert color="blue" mb="md">
+                Bij het bewerken van een dossier kunnen partijen niet gewijzigd worden. 
+                Maak een nieuw dossier aan als u andere partijen wilt selecteren.
+              </Alert>
+            )}
             
             {/* Partij 1 */}
             <div>
@@ -361,8 +436,12 @@ export function DossierFormPage() {
             <Title order={3}>Overzicht</Title>
             <Card withBorder p="md">
               <Text fw={500} mb="xs">Dossier gegevens</Text>
-              <Text>Naam: {form.values.naam}</Text>
-              <Text>Status: {form.values.status}</Text>
+              <Text>Dossiernummer: {form.values.dossierNummer}</Text>
+              {partij1.persoon && partij2.persoon && (
+                <Text mt="xs" fw={500}>
+                  {getVolledigeNaam(partij1.persoon)} & {getVolledigeNaam(partij2.persoon)}
+                </Text>
+              )}
             </Card>
             
             <Card withBorder p="md">
