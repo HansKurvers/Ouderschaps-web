@@ -13,13 +13,13 @@ import {
   Badge,
   Checkbox,
   ColorSwatch,
-  Text
+  Text,
+  Tooltip
 } from '@mantine/core'
-import { IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconPlus, IconTrash, IconInfoCircle } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { omgangService } from '../services/omgang.service'
 import { Dag, Dagdeel, WeekRegeling, Persoon } from '../types/api.types'
-import { getVolledigeNaam } from '../utils/persoon.utils'
 
 interface OmgangCell {
   verzorgerId: string | null
@@ -377,35 +377,47 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
       <Card key={tabel.id} shadow="sm" p="lg" radius="md" withBorder>
         <Group justify="space-between" mb="md">
           <Group>
-            <Select
-              placeholder="Selecteer week regeling"
-              data={weekRegelingen?.map(wr => ({ value: wr.id.toString(), label: wr.omschrijving })) || []}
-              value={tabel.weekRegelingId?.toString() || null}
-              onChange={(value) => updateWeekRegeling(tabel.id, value ? parseInt(value) : null)}
-              style={{ width: 300 }}
-            />
-            <Select
-              placeholder="Verdeling preset"
-              data={[
-                { value: '0-7', label: '0-7 (alle dagen partij 2)' },
-                { value: '1-6', label: '1-6' },
-                { value: '2-5', label: '2-5' },
-                { value: '3-4', label: '3-4' },
-                { value: '4-3', label: '4-3' },
-                { value: '5-2', label: '5-2' },
-                { value: '6-1', label: '6-1' },
-                { value: '7-0', label: '7-0 (alle dagen partij 1)' }
-              ]}
-              onChange={(value) => applyPreset(tabel.id, value || '')}
-              clearable
-              style={{ width: 200 }}
-              disabled={!tabel.weekRegelingId}
-            />
-            {selectedWeekRegeling && (
-              <Badge color="blue" variant="light">
-                {selectedWeekRegeling.omschrijving}
-              </Badge>
-            )}
+            <Stack gap="xs">
+              <Group gap="xs">
+                <Text size="sm" fw={500}>Week regeling</Text>
+                <Tooltip label="Selecteer wanneer deze regeling van toepassing is (bijv. elke week, even weken, oneven weken)">
+                  <IconInfoCircle size={16} style={{ opacity: 0.5 }} />
+                </Tooltip>
+              </Group>
+              <Select
+                placeholder="Selecteer week regeling"
+                data={weekRegelingen?.map(wr => ({ value: wr.id.toString(), label: wr.omschrijving })) || []}
+                value={tabel.weekRegelingId?.toString() || null}
+                onChange={(value) => updateWeekRegeling(tabel.id, value ? parseInt(value) : null)}
+                style={{ width: 300 }}
+              />
+            </Stack>
+            
+            <Stack gap="xs">
+              <Group gap="xs">
+                <Text size="sm" fw={500}>Snelle verdeling</Text>
+                <Tooltip label="Kies een standaard verdeling van dagen tussen de partijen. De eerste waarde is het aantal dagen voor partij 1, de tweede voor partij 2.">
+                  <IconInfoCircle size={16} style={{ opacity: 0.5 }} />
+                </Tooltip>
+              </Group>
+              <Select
+                placeholder="Verdeling preset"
+                data={[
+                  { value: '0-7', label: '0-7 (alle dagen partij 2)' },
+                  { value: '1-6', label: '1-6' },
+                  { value: '2-5', label: '2-5' },
+                  { value: '3-4', label: '3-4' },
+                  { value: '4-3', label: '4-3' },
+                  { value: '5-2', label: '5-2' },
+                  { value: '6-1', label: '6-1' },
+                  { value: '7-0', label: '7-0 (alle dagen partij 1)' }
+                ]}
+                onChange={(value) => applyPreset(tabel.id, value || '')}
+                clearable
+                style={{ width: 200 }}
+                disabled={!tabel.weekRegelingId}
+              />
+            </Stack>
           </Group>
           {weekTabellen.length > 1 && (
             <ActionIcon
