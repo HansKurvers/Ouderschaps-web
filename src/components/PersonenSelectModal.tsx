@@ -126,7 +126,7 @@ export function PersonenSelectModal({
             {searchQuery ? 'Geen personen gevonden' : 'Nog geen personen beschikbaar'}
           </Text>
         ) : (
-          <Table>
+          <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Naam</Table.Th>
@@ -137,21 +137,14 @@ export function PersonenSelectModal({
             </Table.Thead>
             <Table.Tbody>
               {filteredPersonen.map((persoon) => (
-                <Table.Tr key={persoon._id}>
+                <Table.Tr key={persoon._id} onClick={() => {
+                        onSelect(persoon)
+                        onClose()
+                      }} style={{ cursor: 'pointer' }}>
                   <Table.Td>{getVolledigeNaam(persoon)}</Table.Td>
                   <Table.Td>{persoon.email || '-'}</Table.Td>
                   <Table.Td>{persoon.telefoon || '-'}</Table.Td>
-                  <Table.Td>
-                    <Button
-                      size="xs"
-                      onClick={() => {
-                        onSelect(persoon)
-                        onClose()
-                      }}
-                    >
-                      Selecteer
-                    </Button>
-                  </Table.Td>
+                 
                 </Table.Tr>
               ))}
             </Table.Tbody>
