@@ -6,9 +6,10 @@ import { getVolledigeNaam } from '../utils/persoon.utils'
 interface KindCardProps {
   dossierKind: DossierKind
   onRemove: () => void
+  hideRemoveButton?: boolean
 }
 
-export function KindCard({ dossierKind, onRemove }: KindCardProps) {
+export function KindCard({ dossierKind, onRemove, hideRemoveButton = false }: KindCardProps) {
   const kind = dossierKind.kind
   if (!kind) return null
 
@@ -28,15 +29,17 @@ export function KindCard({ dossierKind, onRemove }: KindCardProps) {
             </Text>
           )}
         </div>
-        <Button
-          variant="subtle"
-          color="red"
-          size="sm"
-          leftSection={<IconTrash size={16} />}
-          onClick={onRemove}
-        >
-          Verwijder
-        </Button>
+        {!hideRemoveButton && (
+          <Button
+            variant="subtle"
+            color="red"
+            size="sm"
+            leftSection={<IconTrash size={16} />}
+            onClick={onRemove}
+          >
+            Verwijder
+          </Button>
+        )}
       </Group>
     </Card>
   )

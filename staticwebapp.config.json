@@ -1,11 +1,33 @@
 {
-  "routes": [
-    {
-      "route": "/*",
-      "headers": {
-        "cache-control": "no-cache"
-      },
-      "rewrite": "index.html"
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/*.js",
+      "/*.css",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.gif",
+      "/*.svg",
+      "/*.ico",
+      "/*.woff",
+      "/*.woff2",
+      "/*.ttf",
+      "/*.eot",
+      "/*.json",
+      "/*.webmanifest"
+    ]
+  },
+  "mimeTypes": {
+    ".json": "application/json",
+    ".js": "application/javascript",
+    ".mjs": "application/javascript"
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
     }
-  ]
+  }
 }

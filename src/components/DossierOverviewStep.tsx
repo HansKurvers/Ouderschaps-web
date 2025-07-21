@@ -1,5 +1,6 @@
-import { Stack, Title, Card, Text } from '@mantine/core'
-import { Persoon } from '../types/api.types'
+import { Stack, Title, Card, Text, Grid } from '@mantine/core'
+import { Persoon, DossierKind } from '../types/api.types'
+import { KindCard } from './KindCard'
 
 interface PartijData {
   persoon: Persoon | null
@@ -10,13 +11,15 @@ interface DossierOverviewStepProps {
   dossierNummer: string
   partij1: PartijData
   partij2: PartijData
+  kinderen?: DossierKind[]
   getVolledigeNaam: (persoon: Persoon) => string
 }
 
 export function DossierOverviewStep({ 
   dossierNummer, 
   partij1, 
-  partij2, 
+  partij2,
+  kinderen = [],
   getVolledigeNaam 
 }: DossierOverviewStepProps) {
   return (
@@ -56,6 +59,23 @@ export function DossierOverviewStep({
           <Text c="dimmed">Niet geselecteerd</Text>
         )}
       </Card>
+
+      {kinderen.length > 0 && (
+        <Card withBorder p="md">
+          <Text fw={500} mb="md">Kinderen ({kinderen.length})</Text>
+          <Grid>
+            {kinderen.map((kind) => (
+              <Grid.Col key={kind.id} span={{ base: 12, md: 6 }}>
+                <KindCard
+                  dossierKind={kind}
+                  onRemove={() => {}}
+                  hideRemoveButton={true}
+                />
+              </Grid.Col>
+            ))}
+          </Grid>
+        </Card>
+      )}
     </Stack>
   )
 }

@@ -64,7 +64,7 @@ export function useDossierKinderen(dossierId?: string) {
     try {
       setLoading(true)
       await kinderenService.removeKindFromDossier(dossierId, dossierKindId)
-      setKinderen(prev => prev.filter(k => k.dossierKindId !== dossierKindId))
+      setKinderen(prev => prev.filter(k => String(k.id) !== dossierKindId))
       notifications.show({
         title: 'Succes',
         message: 'Kind verwijderd uit dossier',

@@ -27,6 +27,7 @@ import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
 import { submitDossier } from '../utils/dossierSubmit'
 import { createDossierWithPartijen } from '../utils/dossierCreate'
+import { useDossierKinderen } from '../hooks/useDossierKinderen'
 
 interface DossierFormValues {
   dossierNummer: string
@@ -59,6 +60,8 @@ export function DossierFormPage() {
     getVolledigeNaam,
     getExcludeIds
   } = useDossierPartijen()
+
+  const { kinderen } = useDossierKinderen(dossierId)
 
   const form = useForm<DossierFormValues>({
     initialValues: {
@@ -378,6 +381,7 @@ export function DossierFormPage() {
             dossierNummer={form.values.dossierNummer}
             partij1={partij1}
             partij2={partij2}
+            kinderen={kinderen}
             getVolledigeNaam={getVolledigeNaam}
           />
         )}
