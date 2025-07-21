@@ -20,18 +20,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { persoonService } from '../services/persoon.service'
 import { rolService } from '../services/rol.service'
 import { Persoon, Rol } from '../types/api.types'
+import { getContactFormValidation, ContactFormValues } from '../utils/contact.validation'
 
-interface ContactFormValues {
-  voornamen: string
-  tussenvoegsel: string
-  achternaam: string
-  email: string
-  telefoon: string
-  adres: string
-  postcode: string
-  plaats: string
-  rolId: string
-}
 
 export function ContactFormPage() {
   const { persoonId } = useParams()
@@ -54,15 +44,10 @@ export function ContactFormPage() {
       postcode: '',
       plaats: '',
       rolId: '',
+      roepnaam: '',
+      opmerking: ''
     },
-    validate: {
-      achternaam: (value) => (value.trim().length < 2 ? 'Achternaam is verplicht' : null),
-      email: (value) => {
-        if (!value) return null // Email is optioneel
-        return /^\S+@\S+$/.test(value) ? null : 'Ongeldig email adres'
-      },
-      rolId: (value) => (!value ? 'Selecteer een rol' : null),
-    },
+    validate: getContactFormValidation(true) // rolId is required in this form
   })
 
   useEffect(() => {

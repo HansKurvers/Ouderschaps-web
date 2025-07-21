@@ -1,5 +1,3 @@
-import { UseFormReturnType } from '@mantine/form'
-
 export interface ContactFormValues {
   roepnaam?: string
   voornamen: string
@@ -9,6 +7,9 @@ export interface ContactFormValues {
   telefoon?: string
   opmerking?: string
   rolId?: string
+  adres?: string
+  postcode?: string
+  plaats?: string
 }
 
 export const contactFormValidation = {
