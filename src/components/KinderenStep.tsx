@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import {
   Button,
-  Group,
   Stack,
   Text,
   Grid,
@@ -21,8 +20,8 @@ interface KinderenStepProps {
   onBack: () => void
 }
 
-export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
-  const { kinderen, loading, addKind, removeKind, getKindIds, reload } = useDossierKinderen(dossierId)
+export function KinderenStep({ dossierId }: KinderenStepProps) {
+  const { kinderen, loading, addKind, removeKind, reload } = useDossierKinderen(dossierId)
   const [showPersonenModal, setShowPersonenModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
   const [editingKind, setEditingKind] = useState<DossierKind | null>(null)
@@ -63,7 +62,7 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
     setShowContactModal(true)
   }
 
-  const handleUpdateKind = async (updatedPersoon: Persoon) => {
+  const handleUpdateKind = async () => {
     // The persoon is already updated in the backend via the modal
     setShowContactModal(false)
     setEditingKind(null)

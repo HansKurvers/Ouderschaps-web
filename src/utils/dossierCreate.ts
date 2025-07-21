@@ -1,5 +1,5 @@
 import { dossierService } from '../services/dossier.service'
-import { Dossier, Persoon } from '../types/api.types'
+import { Persoon } from '../types/api.types'
 import { getPersoonId, getDossierNummer } from './dossierHelpers'
 
 interface PartijData {

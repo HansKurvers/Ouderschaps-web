@@ -83,7 +83,7 @@ export function useDossierKinderen(dossierId?: string) {
   }
 
   const getKindIds = () => {
-    return kinderen.map(k => k.kindId)
+    return kinderen.map(k => k.kind.id)
   }
 
   return {
