@@ -116,43 +116,63 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     
     try {
       const response = await omgangService.getOmgangByDossier(dossierId)
-      const omgangData = Array.isArray(response) ? response : []
+      console.log('Loaded omgang data:', response)
       
+      // Handle API response structure
+      const omgangData = response?.data || response || []
+      
+      if (omgangData.length > 0) {
+        console.log('First omgang item:', omgangData[0])
+      }
+      
+      if (!Array.isArray(omgangData) || omgangData.length === 0) {
+        // No existing data, create empty table
+        setWeekTabellen([createEmptyWeekTabel()])
+        return
+      }
+      
+      // Group by weekRegelingId
       const groupedByWeek = omgangData.reduce((acc, omgang) => {
-        const weekId = omgang.weekRegelingId
+        const weekId = omgang.weekRegelingId || omgang.weekRegeling?.id || 1
+        const dagId = omgang.dag?.id || omgang.dagId
+        const dagdeelId = omgang.dagdeel?.id || omgang.dagdeelId
+        const verzorgerId = omgang.verzorger?.id || omgang.verzorger?.persoonId || omgang.verzorgerId
+        
         if (!acc[weekId]) {
-          acc[weekId] = {}
+          acc[weekId] = {
+            omgangData: {},
+            wisselTijden: {}
+          }
         }
-        const key = `${omgang.dagId}-${omgang.dagdeelId}`
-        acc[weekId][key] = {
-          verzorgerId: omgang.verzorgerId,
+        
+        const key = `${dagId}-${dagdeelId}`
+        acc[weekId].omgangData[key] = {
+          verzorgerId: verzorgerId?.toString() || null,
           wisselTijd: omgang.wisselTijd || null
         }
-        return acc
-      }, {} as Record<number, Record<string, OmgangCell>>)
-      
-      const tabellen = Object.entries(groupedByWeek).map(([weekId, data]) => {
-        const wisselTijden: Record<number, string> = {}
-        // Extract wisseltijden per day from the data
-        Object.entries(data).forEach(([key, cell]) => {
-          const [dagId] = key.split('-').map(Number)
-          if (cell.wisselTijd) {
-            wisselTijden[dagId] = cell.wisselTijd
-          }
-        })
         
-        return {
-          id: Math.random().toString(36).substring(2, 9),
-          weekRegelingId: parseInt(weekId),
-          omgangData: data,
-          wisselTijden
+        // Store wisseltijd per day
+        if (omgang.wisselTijd) {
+          acc[weekId].wisselTijden[dagId] = omgang.wisselTijd
         }
-      })
+        
+        return acc
+      }, {} as Record<number, { omgangData: Record<string, OmgangCell>, wisselTijden: Record<number, string> }>)
       
-      setWeekTabellen(tabellen.length > 0 ? tabellen : [createEmptyWeekTabel()])
+      // Create tables from grouped data
+      const tabellen = Object.entries(groupedByWeek).map(([weekId, data]) => ({
+        id: Math.random().toString(36).substring(2, 9),
+        weekRegelingId: parseInt(weekId),
+        omgangData: data.omgangData,
+        wisselTijden: data.wisselTijden
+      }))
+      
+      console.log('Created tables:', tabellen)
+      setWeekTabellen(tabellen)
     } catch (error) {
       console.error('Error loading existing omgang:', error)
-      addWeekTabel()
+      // On error, create empty table
+      setWeekTabellen([createEmptyWeekTabel()])
     }
   }
 
@@ -288,8 +308,9 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     const partij1Id = (partij1?.persoon?.persoonId || partij1?.persoon?.id || partij1?.persoon?._id)?.toString()
     const partij2Id = (partij2?.persoon?.persoonId || partij2?.persoon?.id || partij2?.persoon?._id)?.toString()
     
-    if (verzorgerId === partij1Id) return PARTIJ_COLORS.partij1
-    if (verzorgerId === partij2Id) return PARTIJ_COLORS.partij2
+    // Also check if verzorgerId matches the numeric id
+    if (verzorgerId === partij1Id || verzorgerId === partij1?.persoon?.id?.toString()) return PARTIJ_COLORS.partij1
+    if (verzorgerId === partij2Id || verzorgerId === partij2?.persoon?.id?.toString()) return PARTIJ_COLORS.partij2
     return undefined
   }
 
@@ -386,7 +407,17 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
               </Group>
               <Select
                 placeholder="Selecteer week regeling"
-                data={weekRegelingen?.map(wr => ({ value: wr.id.toString(), label: wr.omschrijving })) || []}
+                data={weekRegelingen?.map(wr => {
+                  // Check if this weekregeling is already used in another table
+                  const isUsed = weekTabellen.some(t => 
+                    t.id !== tabel.id && t.weekRegelingId === wr.id
+                  )
+                  return { 
+                    value: wr.id.toString(), 
+                    label: wr.omschrijving,
+                    disabled: isUsed
+                  }
+                }) || []}
                 value={tabel.weekRegelingId?.toString() || null}
                 onChange={(value) => updateWeekRegeling(tabel.id, value ? parseInt(value) : null)}
                 style={{ width: 300 }}
@@ -477,7 +508,19 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
                               cellData.wisselTijd
                             )}
                           >
-                            {getPartijOptions().find(o => o.value === cellData.verzorgerId)?.label || 'Onbekend'}
+                            {(() => {
+                              const option = getPartijOptions().find(o => o.value === cellData.verzorgerId)
+                              if (option) return option.label
+                              
+                              // Try to determine which party based on ID
+                              if (cellData.verzorgerId === partij1?.persoon?.id?.toString()) {
+                                return getPartijLabel(partij1.persoon, 1)
+                              }
+                              if (cellData.verzorgerId === partij2?.persoon?.id?.toString()) {
+                                return getPartijLabel(partij2.persoon, 2)
+                              }
+                              return 'Onbekend'
+                            })()}
                           </Badge>
                         ) : (
                           <Select
@@ -500,7 +543,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
                   })}
                   <td>
                     <TextInput
-                      placeholder="HH:MM"
+                      placeholder="Wisseltijd"
                       value={dagWisselTijd}
                       onChange={(event) => {
                         const newValue = event.currentTarget.value

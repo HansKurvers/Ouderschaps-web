@@ -141,7 +141,6 @@ export function ContactFormModal({
           color: 'green',
         })
       }
-      console.log(resultPersoon)
       // Call success callback with the new person
       onSuccess(resultPersoon)
       
