@@ -15,6 +15,7 @@ interface ContactFormModalProps {
   rolId?: string
   title?: string
   isKind?: boolean
+  persoon?: Persoon
 }
 
 export function ContactFormModal({ 
@@ -23,7 +24,8 @@ export function ContactFormModal({
   onSuccess,
   rolId,
   title = 'Nieuw contact toevoegen',
-  isKind = false
+  isKind = false,
+  persoon
 }: ContactFormModalProps) {
   const [rollen, setRollen] = useState<Rol[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,14 +61,31 @@ export function ContactFormModal({
         setRollen(rollenData)
         
         // Reset form when modal opens
-        form.reset()
-        if (rolId) {
-          form.setFieldValue('rolId', rolId)
-        } else if (isKind) {
-          // Find the 'Kind' role
-          const kindRol = rollenData.find(r => r.naam.toLowerCase() === 'kind')
-          if (kindRol) {
-            form.setFieldValue('rolId', String(kindRol.id))
+        if (persoon) {
+          // Populate form with existing person data
+          form.setValues({
+            voornamen: persoon.voornamen || '',
+            tussenvoegsel: persoon.tussenvoegsel || '',
+            achternaam: persoon.achternaam || '',
+            email: persoon.email || '',
+            telefoon: persoon.telefoon || '',
+            adres: persoon.adres || '',
+            postcode: persoon.postcode || '',
+            plaats: persoon.plaats || '',
+            rolId: rolId || '1',
+            geboortedatum: persoon.geboorteDatum ? new Date(persoon.geboorteDatum) : null,
+            geslacht: persoon.geslacht || ''
+          })
+        } else {
+          form.reset()
+          if (rolId) {
+            form.setFieldValue('rolId', rolId)
+          } else if (isKind) {
+            // Find the 'Kind' role
+            const kindRol = rollenData.find(r => r.naam.toLowerCase() === 'kind')
+            if (kindRol) {
+              form.setFieldValue('rolId', String(kindRol.id))
+            }
           }
         }
       } catch (err) {
@@ -80,7 +99,7 @@ export function ContactFormModal({
     if (opened) {
       loadRollen()
     }
-  }, [opened, rolId, isKind])
+  }, [opened, rolId, isKind, persoon])
 
   const handleSubmit = async (values: ContactFormValues) => {
     try {
@@ -100,14 +119,28 @@ export function ContactFormModal({
         geboorteDatum: values.geboortedatum instanceof Date ? values.geboortedatum.toISOString().split('T')[0] : values.geboortedatum || undefined,
       }
 
-      // Maak nieuwe persoon aan
-      const resultPersoon = await persoonService.createPersoon(persoonData)
-      
-      notifications.show({
-        title: 'Contact aangemaakt!',
-        message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol toegevoegd`,
-        color: 'green',
-      })
+      // Create or update persoon
+      let resultPersoon: Persoon
+      if (persoon) {
+        // Update existing person
+        const persoonId = persoon.persoonId || persoon.id || persoon._id
+        resultPersoon = await persoonService.updatePersoon(String(persoonId), persoonData)
+        
+        notifications.show({
+          title: 'Contact bijgewerkt!',
+          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
+          color: 'green',
+        })
+      } else {
+        // Create new person
+        resultPersoon = await persoonService.createPersoon(persoonData)
+        
+        notifications.show({
+          title: 'Contact aangemaakt!',
+          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol toegevoegd`,
+          color: 'green',
+        })
+      }
       console.log(resultPersoon)
       // Call success callback with the new person
       onSuccess(resultPersoon)
@@ -147,7 +180,7 @@ export function ContactFormModal({
           form={form}
           rollen={rollen}
           onSubmit={handleSubmit}
-          isEdit={false}
+          isEdit={!!persoon}
           submitting={submitting}
           onCancel={onClose}
           hideRolField={!!rolId || isKind}

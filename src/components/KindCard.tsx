@@ -1,14 +1,16 @@
 import { Card, Group, Text, Button } from '@mantine/core'
-import { IconTrash } from '@tabler/icons-react'
+import { IconTrash, IconEdit } from '@tabler/icons-react'
 import { DossierKind } from '../types/api.types'
 import { getVolledigeNaam } from '../utils/persoon.utils'
 
 interface KindCardProps {
   dossierKind: DossierKind
   onRemove: (id: number) => void
+  onEdit?: (dossierKind: DossierKind) => void
+  hideRemoveButton?: boolean
 }
 
-export function KindCard({ dossierKind, onRemove }: KindCardProps) {
+export function KindCard({ dossierKind, onRemove, onEdit, hideRemoveButton }: KindCardProps) {
   const kind = dossierKind.kind
   if (!kind) return null
 
@@ -28,15 +30,29 @@ export function KindCard({ dossierKind, onRemove }: KindCardProps) {
             </Text>
           )}
         </div>
-        <Button
-          variant="subtle"
-          color="red"
-          size="sm"
-          leftSection={<IconTrash size={16} />}
-          onClick={()=> onRemove( kind.id )}
-        >
-          Verwijder
-        </Button>
+        {!hideRemoveButton && (
+          <Group gap="xs">
+            {onEdit && (
+              <Button
+                variant="subtle"
+                size="sm"
+                leftSection={<IconEdit size={16} />}
+                onClick={() => onEdit(dossierKind)}
+              >
+                Aanpassen
+              </Button>
+            )}
+            <Button
+              variant="subtle"
+              color="red"
+              size="sm"
+              leftSection={<IconTrash size={16} />}
+              onClick={() => onRemove(typeof kind.id === 'string' ? parseInt(kind.id) : kind.id!)}
+            >
+              Verwijder
+            </Button>
+          </Group>
+        )}
       </Group>
     </Card>
   )

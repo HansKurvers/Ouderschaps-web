@@ -8,7 +8,7 @@ import {
   Card
 } from '@mantine/core'
 import { IconUserPlus } from '@tabler/icons-react'
-import { Persoon, AddKindData } from '../types/api.types'
+import { Persoon, AddKindData, DossierKind } from '../types/api.types'
 import { PersonenSelectModal } from './PersonenSelectModal'
 import { ContactFormModal } from './ContactFormModal'
 import { KindCard } from './KindCard'
@@ -22,9 +22,10 @@ interface KinderenStepProps {
 }
 
 export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
-  const { kinderen, loading, addKind, removeKind, getKindIds } = useDossierKinderen(dossierId)
+  const { kinderen, loading, addKind, removeKind, getKindIds, reload } = useDossierKinderen(dossierId)
   const [showPersonenModal, setShowPersonenModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+  const [editingKind, setEditingKind] = useState<DossierKind | null>(null)
 
   const handleSelectKind = async (persoon: Persoon) => {
     try {
@@ -51,9 +52,24 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
       }
       await addKind(data)
       setShowContactModal(false)
+      setEditingKind(null)
     } catch (error) {
       console.error('Failed to add kind:', error)
     }
+  }
+
+  const handleEditKind = (dossierKind: DossierKind) => {
+    setEditingKind(dossierKind)
+    setShowContactModal(true)
+  }
+
+  const handleUpdateKind = async (updatedPersoon: Persoon) => {
+    // The persoon is already updated in the backend via the modal
+    setShowContactModal(false)
+    setEditingKind(null)
+    
+    // Reload the kinderen to show the updated data immediately
+    await reload()
   }
 
 
@@ -74,6 +90,7 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
               <KindCard
                 dossierKind={kind}
                 onRemove={() => removeKind(String(kind.id))}
+                onEdit={handleEditKind}
               />
             </Grid.Col>
           )
@@ -109,10 +126,14 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
 
       <ContactFormModal
         opened={showContactModal}
-        onClose={() => setShowContactModal(false)}
-        onSuccess={handleCreateKind}
-        title="Nieuw kind toevoegen"
+        onClose={() => {
+          setShowContactModal(false)
+          setEditingKind(null)
+        }}
+        onSuccess={editingKind ? handleUpdateKind : handleCreateKind}
+        title={editingKind ? "Kind aanpassen" : "Nieuw kind toevoegen"}
         isKind={true}
+        persoon={editingKind?.kind}
       />
     </Stack>
   )
