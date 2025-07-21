@@ -58,9 +58,10 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
       <div>
         <Text size="xl" fw={700} mb="md">Stap 3: Kinderen toevoegen</Text>
         <Text c="dimmed" mb="xl">
-          Voeg kinderen toe aan dit dossier en geef aan wie de ouders zijn.
+          Voeg kinderen toe aan dit dossier.
         </Text>
       </div>
+
 
       <Grid>
         {kinderen.map((kind) => (

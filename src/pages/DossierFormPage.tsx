@@ -26,6 +26,7 @@ import { DossierOverviewStep } from '../components/DossierOverviewStep'
 import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
 import { submitDossier } from '../utils/dossierSubmit'
+import { createDossierWithPartijen } from '../utils/dossierCreate'
 
 interface DossierFormValues {
   dossierNummer: string
@@ -35,8 +36,9 @@ interface DossierFormValues {
 const ENABLE_DOSSIER_LOADING = true
 
 export function DossierFormPage() {
-  const { dossierId } = useParams()
+  const { dossierId: paramDossierId } = useParams()
   const navigate = useNavigate()
+  const [dossierId, setDossierId] = useState<string | undefined>(paramDossierId)
   const isEdit = !!dossierId
   
   const [active, setActive] = useState(0)
@@ -73,12 +75,12 @@ export function DossierFormPage() {
 
   useEffect(() => {
     loadRollen()
-    if (isEdit && dossierId) {
-      loadDossier(dossierId)
+    if (paramDossierId) {
+      loadDossier(paramDossierId)
       // Skip dossier number step in edit mode
       setActive(1)
     }
-  }, [isEdit, dossierId])
+  }, [paramDossierId])
 
   const loadRollen = async () => {
     try {
@@ -190,32 +192,38 @@ export function DossierFormPage() {
   }
 
   const handleSubmit = async () => {
-    setLoading(true)
-    
-    const result = await submitDossier({
-      isEdit,
-      dossierId,
-      dossierNummer: form.values.dossierNummer,
-      partij1,
-      partij2
-    })
-    
-    if (result.success) {
-      notifications.show({
-        title: isEdit ? 'Dossier bijgewerkt!' : 'Dossier aangemaakt!',
-        message: result.message,
-        color: result.message.includes('probleem') ? 'yellow' : 'green',
+    // For edit mode, update the dossier
+    if (isEdit) {
+      setLoading(true)
+      
+      const result = await submitDossier({
+        isEdit: true,
+        dossierId,
+        dossierNummer: form.values.dossierNummer,
+        partij1,
+        partij2
       })
-      navigate('/dossiers')
+      
+      if (result.success) {
+        notifications.show({
+          title: 'Dossier bijgewerkt!',
+          message: result.message,
+          color: result.message.includes('probleem') ? 'yellow' : 'green',
+        })
+        navigate('/dossiers')
+      } else {
+        notifications.show({
+          title: 'Fout',
+          message: result.message,
+          color: 'red',
+        })
+      }
+      
+      setLoading(false)
     } else {
-      notifications.show({
-        title: 'Fout',
-        message: result.message,
-        color: 'red',
-      })
+      // For new dossiers, just navigate back (dossier was already created)
+      navigate('/dossiers')
     }
-    
-    setLoading(false)
   }
 
   const handleDelete = async () => {
@@ -242,8 +250,44 @@ export function DossierFormPage() {
     }
   }
 
-  const nextStep = () => {
-    setActive((current) => current < 4 ? current + 1 : current)
+  const nextStep = async () => {
+    // After step 2 (partijen), create the dossier if it's new
+    if (active === 1 && !isEdit && partij1.persoon && partij2.persoon) {
+      setLoading(true)
+      try {
+        const result = await createDossierWithPartijen({
+          dossierNummer: form.values.dossierNummer,
+          partij1,
+          partij2
+        })
+        
+        if (result.success && result.dossierId) {
+          setDossierId(result.dossierId)
+          notifications.show({
+            title: 'Dossier aangemaakt',
+            message: 'Je kunt nu kinderen toevoegen aan het dossier',
+            color: 'green'
+          })
+          setActive((current) => current + 1)
+        } else {
+          notifications.show({
+            title: 'Fout',
+            message: result.message,
+            color: 'red'
+          })
+        }
+      } catch (error) {
+        notifications.show({
+          title: 'Fout',
+          message: 'Kon dossier niet aanmaken',
+          color: 'red'
+        })
+      } finally {
+        setLoading(false)
+      }
+    } else {
+      setActive((current) => current < 4 ? current + 1 : current)
+    }
   }
   
   const prevStep = () => {

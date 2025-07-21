@@ -57,6 +57,18 @@ export function ContactFormModal({
         setLoading(true)
         const rollenData = await rolService.getRollen()
         setRollen(rollenData)
+        
+        // Reset form when modal opens
+        form.reset()
+        if (rolId) {
+          form.setFieldValue('rolId', rolId)
+        } else if (isKind) {
+          // Find the 'Kind' role
+          const kindRol = rollenData.find(r => r.naam.toLowerCase() === 'kind')
+          if (kindRol) {
+            form.setFieldValue('rolId', String(kindRol.id))
+          }
+        }
       } catch (err) {
         console.error('Error loading rollen:', err)
         setError('Kon rollen niet laden')
@@ -67,13 +79,8 @@ export function ContactFormModal({
 
     if (opened) {
       loadRollen()
-      // Reset form when modal opens
-      form.reset()
-      if (rolId) {
-        form.setFieldValue('rolId', rolId)
-      }
     }
-  }, [opened, rolId])
+  }, [opened, rolId, isKind])
 
   const handleSubmit = async (values: ContactFormValues) => {
     try {
