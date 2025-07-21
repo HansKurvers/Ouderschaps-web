@@ -142,7 +142,7 @@ export function DossierFormPage() {
   }
 
   const handlePersonSelect = (persoon: Persoon) => {
-    console.log('Person selected:', persoon, 'for partij:', selectingPartij)
+    // Person selected for partij
     
     if (selectingPartij) {
       setPartijPersoon(selectingPartij, persoon)
@@ -153,7 +153,7 @@ export function DossierFormPage() {
   }
 
   const handleCreateNewPerson = () => {
-    console.log('Opening new contact modal for partij:', selectingPartij)
+    // Opening new contact modal
     // Sla op voor welke partij we een nieuw contact maken
     setNewContactPartij(selectingPartij)
     // Open de modal voor nieuw contact in plaats van navigeren
@@ -162,15 +162,14 @@ export function DossierFormPage() {
   }
   
   const handleNewContactSuccess = (persoon: Persoon) => {
-    console.log('New contact created:', persoon)
-    console.log('Adding to partij:', newContactPartij)
+    // New contact created and added to partij
     
     // Voeg de nieuwe persoon toe aan de juiste partij
     if (newContactPartij === 1) {
-      console.log('Setting partij1 with new person')
+      // Setting partij1 with new person
       setPartij1({ ...partij1, persoon })
     } else if (newContactPartij === 2) {
-      console.log('Setting partij2 with new person')
+      // Setting partij2 with new person
       setPartij2({ ...partij2, persoon })
     }
     

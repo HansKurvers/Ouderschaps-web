@@ -12,7 +12,6 @@ import {
   Card,
   Badge,
   Checkbox,
-  ColorSwatch,
   Text,
   Tooltip
 } from '@mantine/core'
@@ -85,7 +84,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         omgangService.getDagdelen(),
         omgangService.getWeekRegelingen()
       ])
-      console.log('API responses:', { dagenData, dagdelenData, weekRegelingenData })
       const dagenArray = dagenData?.data || []
       const dagdelenArray = dagdelenData?.data || []
       const weekRegelingenArray = weekRegelingenData?.data || []
@@ -102,7 +100,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
       
       setLoading(false)
     } catch (error) {
-      console.error('Error loading reference data:', error)
       notifications.show({
         title: 'Fout',
         message: 'Kon referentie data niet laden',
@@ -116,14 +113,9 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     
     try {
       const response = await omgangService.getOmgangByDossier(dossierId)
-      console.log('Loaded omgang data:', response)
       
       // Handle API response structure
       const omgangData = response?.data || response || []
-      
-      if (omgangData.length > 0) {
-        console.log('First omgang item:', omgangData[0])
-      }
       
       if (!Array.isArray(omgangData) || omgangData.length === 0) {
         // No existing data, create empty table
@@ -167,7 +159,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         wisselTijden: data.wisselTijden
       }))
       
-      console.log('Created tables:', tabellen)
       setWeekTabellen(tabellen)
     } catch (error) {
       console.error('Error loading existing omgang:', error)
@@ -368,7 +359,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
               weekRegelingId: tabel.weekRegelingId || 1,
               weekRegelingAnders: ''
             }
-            console.log('Creating omgang with data:', omgangData, 'for dossier:', dossierId)
             await omgangService.createOmgang(dossierId, omgangData)
           }
         }

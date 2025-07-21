@@ -1,17 +1,13 @@
-import { Omgang, Dag, Dagdeel, WeekRegeling } from '../types/api.types'
+import { Omgang } from '../types/api.types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 class OmgangService {
-  private getUserId(): string | null {
-    return localStorage.getItem('userId')
-  }
-
+ 
   private getHeaders(): HeadersInit {
-    const userId = this.getUserId()
     return {
       'Content-Type': 'application/json',
-      'x-user-id': '1' || ''
+      'x-user-id': '1' // Hardcoded for now, update when auth is implemented
     }
   }
   //TODO update when auth is implemented
@@ -37,7 +33,7 @@ class OmgangService {
     
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Create omgang error:', response.status, errorText)
+      // Create omgang error
       throw new Error(`Failed to create omgang: ${errorText}`)
     }
     
