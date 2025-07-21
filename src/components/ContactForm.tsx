@@ -97,8 +97,7 @@ export function ContactForm({
               data={[
                 { value: 'Man', label: 'Man' },
                 { value: 'Vrouw', label: 'Vrouw' },
-                { value: 'Anders', label: 'Anders' },
-                { value: 'Onbekend', label: 'Onbekend' }
+                { value: 'Anders', label: 'Anders' }
               ]}
               {...form.getInputProps('geslacht')}
             />

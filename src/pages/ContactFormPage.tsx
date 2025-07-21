@@ -90,7 +90,7 @@ export function ContactFormPage() {
         postcode: persoon.postcode || '',
         plaats: persoon.plaats || '',
         rolId: '1', // TODO: Get actual role from dossier partij
-        geboortedatum: persoon.geboortedatum || null,
+        geboortedatum: persoon.geboorteDatum || null,
         geslacht: persoon.geslacht || '',
       })
     } catch (err) {
@@ -119,7 +119,7 @@ export function ContactFormPage() {
         postcode: values.postcode || undefined,
         plaats: values.plaats || undefined,
         geslacht: values.geslacht || undefined,
-        // TODO: geboortedatum wordt nog niet ondersteund door de backend
+        geboorteDatum: values.geboortedatum instanceof Date ? values.geboortedatum.toISOString().split('T')[0] : values.geboortedatum || undefined,
       }
 
       let resultPersoon: Persoon
@@ -228,8 +228,7 @@ export function ContactFormPage() {
                   data={[
                     { value: 'Man', label: 'Man' },
                     { value: 'Vrouw', label: 'Vrouw' },
-                    { value: 'Anders', label: 'Anders' },
-                    { value: 'Onbekend', label: 'Onbekend' }
+                    { value: 'Anders', label: 'Anders' }
                   ]}
                   {...form.getInputProps('geslacht')}
                 />
