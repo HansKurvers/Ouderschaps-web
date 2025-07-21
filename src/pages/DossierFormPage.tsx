@@ -5,32 +5,29 @@ import {
   Stepper,
   Button,
   Group,
-  TextInput,
   Paper,
-  Stack,
-  Text,
-  Card,
-  Badge,
   Alert,
-  Modal
+  Modal,
+  Text
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { IconTrash, IconUserPlus, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
+import { IconTrash, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { dossierService } from '../services/dossier.service'
 import { rolService } from '../services/rol.service'
-import { Dossier, Persoon, Rol } from '../types/api.types'
+import { Persoon, Rol } from '../types/api.types'
 import { PersonenSelectModal } from '../components/PersonenSelectModal'
 import { ContactFormModal } from '../components/ContactFormModal'
+import { DossierNumberStep } from '../components/DossierNumberStep'
+import { PartijSelectStep } from '../components/PartijSelectStep'
+import { DossierOverviewStep } from '../components/DossierOverviewStep'
+import { useDossierPartijen } from '../hooks/useDossierPartijen'
+import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
+import { submitDossier } from '../utils/dossierSubmit'
 
 interface DossierFormValues {
   dossierNummer: string
-}
-
-interface PartijData {
-  persoon: Persoon | null
-  rolId: string
 }
 
 // Feature flag: enable loading existing dossier data
@@ -50,8 +47,15 @@ export function DossierFormPage() {
   const [newContactModalOpen, setNewContactModalOpen] = useState(false)
   const [newContactPartij, setNewContactPartij] = useState<1 | 2 | null>(null)
   
-  const [partij1, setPartij1] = useState<PartijData>({ persoon: null, rolId: '1' })
-  const [partij2, setPartij2] = useState<PartijData>({ persoon: null, rolId: '2' })
+  const {
+    partij1,
+    partij2,
+    setPartij1,
+    setPartij2,
+    setPartijPersoon,
+    getVolledigeNaam,
+    getExcludeIds
+  } = useDossierPartijen()
 
   const form = useForm<DossierFormValues>({
     initialValues: {
@@ -88,56 +92,40 @@ export function DossierFormPage() {
     try {
       setLoading(true)
       
-      if (ENABLE_DOSSIER_LOADING) { 
-        // Probeer het dossier op te halen
-        const dossier = await dossierService.getDossier(id)
-        
-        // Zet de form values
-        form.setValues({
-          dossierNummer: dossier.dossierNummer || dossier.dossier_nummer || ''
-        })
-        
-        // Probeer de partijen op te halen
-        try {
-          const partijen = await dossierService.getDossierPartijen(id)
-          
-          // Map de partijen naar partij1 en partij2
-          if (partijen && partijen.length > 0) {
-            const partij1Data = partijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
-            const partij2Data = partijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
-            
-            if (partij1Data && partij1Data.persoon) {
-              setPartij1({ persoon: partij1Data.persoon, rolId: partij1Data.rolId })
-            }
-            if (partij2Data && partij2Data.persoon) {
-              setPartij2({ persoon: partij2Data.persoon, rolId: partij2Data.rolId })
-            }
-          }
-        } catch (partijErr) {
-          console.error('Error loading partijen:', partijErr)
-          // Don't show notification for partijen loading errors in edit mode
-          // The user can still edit the dossier number and other details
-        }
-      } else {
-        // Voor edit mode kunnen we het dossiernummer niet weten zonder de API
-        form.setValues({
-          dossierNummer: ''
-        })
-        
+      if (!ENABLE_DOSSIER_LOADING) {
+        form.setValues({ dossierNummer: '' })
         notifications.show({
           title: 'Let op',
           message: 'Dossier data laden is tijdelijk uitgeschakeld.',
           color: 'yellow',
         })
+        return
       }
-    } catch (err) {
-      console.error('Error loading dossier:', err)
-      notifications.show({
-        title: 'Fout',
-        message: err instanceof Error ? err.message : 'Kon dossier niet laden',
-        color: 'red',
-      })
-      navigate('/dossiers')
+
+      const { dossier, partijen, error } = await loadDossierData(id)
+      
+      if (error || !dossier) {
+        notifications.show({
+          title: 'Fout',
+          message: error?.message || 'Kon dossier niet laden',
+          color: 'red',
+        })
+        navigate('/dossiers')
+        return
+      }
+      
+      form.setValues({ dossierNummer: getDossierNummer(dossier) })
+      
+      // Map de partijen naar partij1 en partij2
+      const partij1Data = partijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
+      const partij2Data = partijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
+      
+      if (partij1Data?.persoon) {
+        setPartij1({ persoon: partij1Data.persoon, rolId: partij1Data.rolId })
+      }
+      if (partij2Data?.persoon) {
+        setPartij2({ persoon: partij2Data.persoon, rolId: partij2Data.rolId })
+      }
     } finally {
       setLoading(false)
     }
@@ -146,12 +134,8 @@ export function DossierFormPage() {
   const handlePersonSelect = (persoon: Persoon) => {
     console.log('Person selected:', persoon, 'for partij:', selectingPartij)
     
-    if (selectingPartij === 1) {
-      const newPartij1 = { ...partij1, persoon }
-      setPartij1(newPartij1)
-    } else if (selectingPartij === 2) {
-      const newPartij2 = { ...partij2, persoon }
-      setPartij2(newPartij2)
+    if (selectingPartij) {
+      setPartijPersoon(selectingPartij, persoon)
     }
     
     // Reset selectingPartij na succesvol selecteren
@@ -186,14 +170,6 @@ export function DossierFormPage() {
     setNewContactModalOpen(false)
   }
 
-  const getVolledigeNaam = (persoon: Persoon) => {
-    const delen = [
-      persoon.roepnaam || persoon.voornamen,
-      persoon.tussenvoegsel,
-      persoon.achternaam
-    ].filter(Boolean)
-    return delen.join(' ')
-  }
 
   const canProceed = (step: number) => {
     switch (step) {
@@ -211,150 +187,32 @@ export function DossierFormPage() {
   }
 
   const handleSubmit = async () => {
-    try {
-      setLoading(true)
-      
-      let dossier: Dossier
-      
-      if (isEdit && dossierId) {
-        // Update dossier - get existing dossier data since dossierNummer cannot be updated
-        dossier = await dossierService.getDossier(dossierId)
-        
-        
-        // First, get existing partijen to compare
-        try {
-          const existingPartijen = await dossierService.getDossierPartijen(dossierId)
-          
-          const existingPartij1 = existingPartijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
-          const existingPartij2 = existingPartijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
-          
-          
-          // Remove old partijen if they exist
-          if (existingPartij1) {
-            const partij1Id = existingPartij1.dossierPartijId || existingPartij1._id || (existingPartij1 as any).id
-            if (partij1Id) {
-              await dossierService.removeDossierPartij(dossierId, partij1Id)
-            } else {
-              console.error('No valid ID found for existingPartij1')
-            }
-          }
-          if (existingPartij2) {
-            const partij2Id = existingPartij2.dossierPartijId || existingPartij2._id || (existingPartij2 as any).id
-            if (partij2Id) {
-              await dossierService.removeDossierPartij(dossierId, partij2Id)
-            } else {
-              console.error('No valid ID found for existingPartij2')
-            }
-          }
-          
-          // Add new partijen
-          if (partij1.persoon) {
-
-            // Check if persoonId exists, fallback to id
-            const persoonId = partij1.persoon.persoonId || (partij1.persoon.id ? String(partij1.persoon.id) : null)
-            
-            if (!persoonId) {
-              console.error('No persoonId found for partij1:', partij1.persoon)
-              throw new Error('Persoon ID is required')
-            }
-            
-            await dossierService.addDossierPartij(dossierId, {
-              persoonId: persoonId,
-              rolId: parseInt(partij1.rolId || '1')
-            })
-          }
-          
-          if (partij2.persoon) {
-            // Check if persoonId exists, fallback to id
-            const persoonId = partij2.persoon.persoonId || (partij2.persoon.id ? String(partij2.persoon.id) : null)
-            
-            if (!persoonId) {
-              console.error('No persoonId found for partij2:', partij2.persoon)
-              throw new Error('Persoon ID is required')
-            }
-            
-            await dossierService.addDossierPartij(dossierId, {
-              persoonId: persoonId,
-              rolId: parseInt(partij2.rolId || '2')
-            })
-          }
-          
-        } catch (partijErr) {
-          console.error('Error updating partijen:', partijErr)
-          console.error('Error details:', {
-            error: partijErr,
-            partij1: partij1,
-            partij2: partij2,
-            dossierId: dossierId
-          })
-          notifications.show({
-            title: 'Waarschuwing',
-            message: 'Dossier bijgewerkt, maar er was een probleem met het bijwerken van partijen',
-            color: 'yellow',
-          })
-        }
-        
-        const dossierNummer = dossier.dossierNummer || dossier.dossier_nummer || form.values.dossierNummer || dossierId
-        notifications.show({
-          title: 'Dossier bijgewerkt!',
-          message: `Dossier ${dossierNummer} is succesvol bijgewerkt`,
-          color: 'green',
-        })
-      } else {
-        // Create new dossier
-        dossier = await dossierService.createDossier({
-          dossierNummer: form.values.dossierNummer
-        })
-        
-        // Add partijen alleen voor nieuwe dossiers
-        const dossierIdToUse = String(dossier.id) // Gebruik het database ID
-        
-        if (partij1.persoon && dossierIdToUse) {
-          
-          const persoonId = partij1.persoon.persoonId || (partij1.persoon.id ? String(partij1.persoon.id) : null)
-          if (!persoonId) {
-            console.error('No persoonId found for partij1 in new dossier:', partij1.persoon)
-            throw new Error('Persoon ID is required for partij 1')
-          }
-          
-          await dossierService.addDossierPartij(dossierIdToUse, {
-            persoonId: persoonId,
-            rolId: parseInt(partij1.rolId || '1')
-          })
-        }
-        
-        if (partij2.persoon && dossierIdToUse) {
-          
-          const persoonId = partij2.persoon.persoonId || (partij2.persoon.id ? String(partij2.persoon.id) : null)
-          if (!persoonId) {
-            console.error('No persoonId found for partij2 in new dossier:', partij2.persoon)
-            throw new Error('Persoon ID is required for partij 2')
-          }
-          
-          await dossierService.addDossierPartij(dossierIdToUse, {
-            persoonId: persoonId,
-            rolId: parseInt(partij2.rolId || '2')
-          })
-        }
-        
-        notifications.show({
-          title: 'Dossier aangemaakt!',
-          message: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer} is succesvol aangemaakt`,
-          color: 'green',
-        })
-      }
-      
+    setLoading(true)
+    
+    const result = await submitDossier({
+      isEdit,
+      dossierId,
+      dossierNummer: form.values.dossierNummer,
+      partij1,
+      partij2
+    })
+    
+    if (result.success) {
+      notifications.show({
+        title: isEdit ? 'Dossier bijgewerkt!' : 'Dossier aangemaakt!',
+        message: result.message,
+        color: result.message.includes('probleem') ? 'yellow' : 'green',
+      })
       navigate('/dossiers')
-    } catch (err) {
-      console.error('Error submitting dossier:', err)
+    } else {
       notifications.show({
         title: 'Fout',
-        message: err instanceof Error ? err.message : 'Er is een fout opgetreden',
+        message: result.message,
         color: 'red',
       })
-    } finally {
-      setLoading(false)
     }
+    
+    setLoading(false)
   }
 
   const handleDelete = async () => {
@@ -438,130 +296,29 @@ export function DossierFormPage() {
 
       <Paper shadow="sm" p="xl" radius="md" withBorder>
         {active === 0 && (
-          <Stack>
-            <Title order={3}>Dossier Gegevens</Title>
-            <TextInput
-              label="Dossiernummer"
-              placeholder="Bijvoorbeeld: 12345"
-              required
-              {...form.getInputProps('dossierNummer')}
-            />
-          </Stack>
+          <DossierNumberStep form={form} />
         )}
 
         {active === 1 && (
-          <Stack>
-            <Title order={3}>Selecteer Partijen</Title>
-            
-            {/* Partij 1 */}
-            <div>
-              <Text fw={500} mb="sm">Partij 1</Text>
-              {partij1.persoon ? (
-                <Card withBorder p="md">
-                  <Group justify="space-between">
-                    <div>
-                      <Text fw={500}>{getVolledigeNaam(partij1.persoon)}</Text>
-                      <Text size="sm" c="dimmed">{partij1.persoon.email || 'Geen email'}</Text>
-                      <Badge mt="xs">{rollen.find(r => String(r.id) === partij1.rolId)?.naam || 'Partij 1'}</Badge>
-                    </div>
-                    <Button
-                      variant="light"
-                      onClick={() => {
-                        setSelectingPartij(1)
-                        setSelectModalOpen(true)
-                      }}
-                    >
-                      Wijzig persoon
-                    </Button>
-                  </Group>
-                </Card>
-              ) : (
-                <Button
-                  leftSection={<IconUserPlus size={20} />}
-                  onClick={() => {
-                    setSelectingPartij(1)
-                    setSelectModalOpen(true)
-                  }}
-                >
-                  Selecteer persoon voor Partij 1
-                </Button>
-              )}
-            </div>
-
-            {/* Partij 2 */}
-            <div>
-              <Text fw={500} mb="sm">Partij 2</Text>
-              {partij2.persoon ? (
-                <Card withBorder p="md">
-                  <Group justify="space-between">
-                    <div>
-                      <Text fw={500}>{getVolledigeNaam(partij2.persoon)}</Text>
-                      <Text size="sm" c="dimmed">{partij2.persoon.email || 'Geen email'}</Text>
-                      <Badge mt="xs">{rollen.find(r => String(r.id) === partij2.rolId)?.naam || 'Partij 2'}</Badge>
-                    </div>
-                    <Button
-                      variant="light"
-                      onClick={() => {
-                        setSelectingPartij(2)
-                        setSelectModalOpen(true)
-                      }}
-                    >
-                      Wijzig persoon
-                    </Button>
-                  </Group>
-                </Card>
-              ) : (
-                <Button
-                  leftSection={<IconUserPlus size={20} />}
-                  onClick={() => {
-                    setSelectingPartij(2)
-                    setSelectModalOpen(true)
-                  }}
-                >
-                  Selecteer persoon voor Partij 2
-                </Button>
-              )}
-            </div>
-          </Stack>
+          <PartijSelectStep
+            partij1={partij1}
+            partij2={partij2}
+            rollen={rollen}
+            onSelectPartij={(partijNumber) => {
+              setSelectingPartij(partijNumber)
+              setSelectModalOpen(true)
+            }}
+            getVolledigeNaam={getVolledigeNaam}
+          />
         )}
 
         {active === 2 && (
-          <Stack>
-            <Title order={3}>Controle & Overzicht</Title>
-            <Card withBorder p="md">
-              <Text fw={500} mb="xs">Dossier gegevens</Text>
-              <Text>Dossiernummer: {form.values.dossierNummer}</Text>
-              {partij1.persoon && partij2.persoon && (
-                <Text mt="xs" fw={500}>
-                  {getVolledigeNaam(partij1.persoon)} & {getVolledigeNaam(partij2.persoon)}
-                </Text>
-              )}
-            </Card>
-            
-            <Card withBorder p="md">
-              <Text fw={500} mb="xs">Partij 1</Text>
-              {partij1.persoon ? (
-                <>
-                  <Text>{getVolledigeNaam(partij1.persoon)}</Text>
-                  <Text size="sm" c="dimmed">{partij1.persoon.email || 'Geen email'}</Text>
-                </>
-              ) : (
-                <Text c="dimmed">Niet geselecteerd</Text>
-              )}
-            </Card>
-            
-            <Card withBorder p="md">
-              <Text fw={500} mb="xs">Partij 2</Text>
-              {partij2.persoon ? (
-                <>
-                  <Text>{getVolledigeNaam(partij2.persoon)}</Text>
-                  <Text size="sm" c="dimmed">{partij2.persoon.email || 'Geen email'}</Text>
-                </>
-              ) : (
-                <Text c="dimmed">Niet geselecteerd</Text>
-              )}
-            </Card>
-          </Stack>
+          <DossierOverviewStep
+            dossierNummer={form.values.dossierNummer}
+            partij1={partij1}
+            partij2={partij2}
+            getVolledigeNaam={getVolledigeNaam}
+          />
         )}
 
         <Group justify="space-between" mt="xl">
@@ -598,7 +355,7 @@ export function DossierFormPage() {
         }}
         onSelect={handlePersonSelect}
         onCreateNew={handleCreateNewPerson}
-        excludeIds={[partij1.persoon?.persoonId, partij2.persoon?.persoonId].filter(Boolean) as string[]}
+        excludeIds={getExcludeIds()}
         title={`Selecteer persoon voor ${selectingPartij === 1 ? 'Partij 1' : 'Partij 2'}`}
       />
 

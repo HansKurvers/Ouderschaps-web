@@ -1,5 +1,6 @@
 import { apiService } from './api.service'
 import { Dossier, DossierPartij, PaginatedResponse } from '../types/api.types'
+import { getVolledigeNaam } from '../utils/persoon.utils'
 
 export const dossierService = {
   // Haal alle dossiers op voor de ingelogde gebruiker
@@ -99,16 +100,6 @@ export const dossierService = {
 
       const partij1 = partijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
       const partij2 = partijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
-
-      const getVolledigeNaam = (persoon: any) => {
-        if (!persoon) return 'Onbekend'
-        const delen = [
-          persoon.roepnaam || persoon.voornamen,
-          persoon.tussenvoegsel,
-          persoon.achternaam
-        ].filter(Boolean)
-        return delen.join(' ')
-      }
 
       const naam1 = partij1?.persoon ? getVolledigeNaam(partij1.persoon) : 'Partij 1'
       const naam2 = partij2?.persoon ? getVolledigeNaam(partij2.persoon) : 'Partij 2'

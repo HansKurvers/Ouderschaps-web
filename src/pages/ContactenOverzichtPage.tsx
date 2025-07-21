@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom'
 import { persoonService } from '../services/persoon.service'
 import { dossierService } from '../services/dossier.service'
 import { Persoon } from '../types/api.types'
+import { getVolledigeNaam } from '../utils/persoon.utils'
 
 type SortField = 'naam' | 'rol'
 type SortOrder = 'asc' | 'desc'
@@ -83,14 +84,6 @@ export function ContactenOverzichtPage() {
     }
   }
 
-  const getVolledigeNaam = (persoon: Persoon) => {
-    const delen = [
-      persoon.roepnaam || persoon.voornamen,
-      persoon.tussenvoegsel,
-      persoon.achternaam
-    ].filter(Boolean)
-    return delen.join(' ')
-  }
 
   const filterAndSortPersonen = () => {
     let filtered = [...personen]

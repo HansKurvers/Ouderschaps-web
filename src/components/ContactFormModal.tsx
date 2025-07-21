@@ -6,6 +6,7 @@ import { ContactForm, ContactFormValues } from './ContactForm'
 import { persoonService } from '../services/persoon.service'
 import { rolService } from '../services/rol.service'
 import { Persoon, Rol } from '../types/api.types'
+import { getContactFormValidation } from '../utils/contact.validation'
 
 interface ContactFormModalProps {
   opened: boolean
@@ -39,14 +40,7 @@ export function ContactFormModal({
       plaats: '',
       rolId: rolId || '1'
     },
-    validate: {
-      voornamen: (value) => (!value ? 'Voornamen is verplicht' : null),
-      achternaam: (value) => (!value ? 'Achternaam is verplicht' : null),
-      email: (value) => {
-        if (!value) return null
-        return !/^\S+@\S+$/.test(value) ? 'Ongeldig e-mailadres' : null
-      },
-    },
+    validate: getContactFormValidation(false) // rolId is not required in modal
   })
 
   useEffect(() => {

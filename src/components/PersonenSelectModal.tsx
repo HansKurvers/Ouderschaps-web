@@ -13,6 +13,7 @@ import {
 import { IconSearch, IconUserPlus } from '@tabler/icons-react'
 import { persoonService } from '../services/persoon.service'
 import { Persoon } from '../types/api.types'
+import { getVolledigeNaam } from '../utils/persoon.utils'
 
 interface PersonenSelectModalProps {
   opened: boolean
@@ -79,14 +80,6 @@ export function PersonenSelectModal({
     setFilteredPersonen(filtered)
   }
 
-  const getVolledigeNaam = (persoon: Persoon) => {
-    const delen = [
-      persoon.roepnaam || persoon.voornamen,
-      persoon.tussenvoegsel,
-      persoon.achternaam
-    ].filter(Boolean)
-    return delen.join(' ')
-  }
 
   return (
     <Modal

@@ -154,3 +154,5 @@ export function ContactForm({
     </form>
   )
 }
+
+// TODO partij 1 en partij 2 in de frontend contact lijst laten zijn als "partij"
