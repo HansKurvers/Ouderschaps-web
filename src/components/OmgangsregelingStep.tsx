@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useImperativeHandle } from 'react'
 import {
   Container,
   Title,
@@ -12,7 +12,8 @@ import {
   Card,
   Badge,
   Checkbox,
-  ColorSwatch
+  ColorSwatch,
+  Text
 } from '@mantine/core'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
@@ -36,6 +37,7 @@ interface OmgangsregelingStepProps {
   dossierId?: string
   partij1: { persoon: Persoon | null }
   partij2: { persoon: Persoon | null }
+  onDataChange?: (data: WeekTabelData[]) => void
 }
 
 const PARTIJ_COLORS = {
@@ -43,13 +45,22 @@ const PARTIJ_COLORS = {
   partij2: '#ff9f40'
 }
 
-export function OmgangsregelingStep({ dossierId, partij1, partij2 }: OmgangsregelingStepProps) {
+export interface OmgangsregelingStepHandle {
+  saveData: () => Promise<void>
+}
+
+export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, OmgangsregelingStepProps>(
+  ({ dossierId, partij1, partij2, onDataChange }, ref) => {
   const [dagen, setDagen] = useState<Dag[]>([])
   const [dagdelen, setDagdelen] = useState<Dagdeel[]>([])
   const [weekRegelingen, setWeekRegelingen] = useState<WeekRegeling[]>([])
   const [weekTabellen, setWeekTabellen] = useState<WeekTabelData[]>([])
   const [loading, setLoading] = useState(true)
   const [gebruikRoepnamen, setGebruikRoepnamen] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    saveData: saveOmgangData
+  }))
 
   useEffect(() => {
     loadReferenceData()
@@ -60,6 +71,12 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
       loadExistingOmgang()
     }
   }, [dossierId, dagen.length, dagdelen.length])
+
+  useEffect(() => {
+    if (onDataChange && weekTabellen.length > 0) {
+      onDataChange(weekTabellen)
+    }
+  }, [weekTabellen, onDataChange])
 
   const loadReferenceData = async () => {
     try {
@@ -227,7 +244,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
   const applyPreset = (tabelId: string, preset: string) => {
     if (!preset || !partij1?.persoon || !partij2?.persoon) return
     
-    const [dagen1, dagen2] = preset.split('-').map(Number)
+    const [dagen1] = preset.split('-').map(Number)
     const partij1Id = (partij1.persoon.persoonId || partij1.persoon.id || partij1.persoon._id)?.toString()
     const partij2Id = (partij2.persoon.persoonId || partij2.persoon.id || partij2.persoon._id)?.toString()
     
@@ -301,6 +318,56 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     return options
   }
 
+  const saveOmgangData = async () => {
+    if (!dossierId) return
+
+    try {
+      // Delete existing omgang data first
+      const existingData = await omgangService.getOmgangByDossier(dossierId)
+      if (Array.isArray(existingData)) {
+        for (const omgang of existingData) {
+          if (omgang.id) {
+            await omgangService.deleteOmgang(dossierId, omgang.id)
+          }
+        }
+      }
+
+      // Save new omgang data
+      for (const tabel of weekTabellen) {
+        for (const [key, cellData] of Object.entries(tabel.omgangData)) {
+          if (cellData.verzorgerId) {
+            const [dagId, dagdeelId] = key.split('-').map(Number)
+            const wisselTijd = tabel.wisselTijden?.[dagId] || undefined
+            
+            const omgangData = {
+              dagId: dagId,
+              dagdeelId: dagdeelId,
+              verzorgerId: parseInt(cellData.verzorgerId),
+              wisselTijd: wisselTijd || '',
+              weekRegelingId: tabel.weekRegelingId || 1,
+              weekRegelingAnders: ''
+            }
+            console.log('Creating omgang with data:', omgangData, 'for dossier:', dossierId)
+            await omgangService.createOmgang(dossierId, omgangData)
+          }
+        }
+      }
+
+      notifications.show({
+        title: 'Succes',
+        message: 'Omgangsregeling opgeslagen',
+        color: 'green'
+      })
+    } catch (error) {
+      console.error('Error saving omgang:', error)
+      notifications.show({
+        title: 'Fout',
+        message: 'Kon omgangsregeling niet opslaan',
+        color: 'red'
+      })
+    }
+  }
+
   const renderWeekTabel = (tabel: WeekTabelData) => {
     const selectedWeekRegeling = Array.isArray(weekRegelingen) 
       ? weekRegelingen.find(wr => wr.id === tabel.weekRegelingId)
@@ -332,6 +399,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
               onChange={(value) => applyPreset(tabel.id, value || '')}
               clearable
               style={{ width: 200 }}
+              disabled={!tabel.weekRegelingId}
             />
             {selectedWeekRegeling && (
               <Badge color="blue" variant="light">
@@ -351,7 +419,13 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
           )}
         </Group>
 
-        <Table>
+        {!tabel.weekRegelingId && (
+          <Text size="sm" c="dimmed" ta="center" mb="md">
+            Selecteer eerst een week regeling om de omgangsregeling in te vullen
+          </Text>
+        )}
+        
+        <Table style={{ opacity: tabel.weekRegelingId ? 1 : 0.5 }}>
           <thead>
             <tr>
               <th>Dag</th>
@@ -379,8 +453,11 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                             color={getPartijColor(cellData.verzorgerId)} 
                             variant="light"
                             fullWidth
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => updateOmgangCell(
+                            style={{ 
+                              cursor: tabel.weekRegelingId ? 'pointer' : 'not-allowed',
+                              opacity: tabel.weekRegelingId ? 1 : 0.5
+                            }}
+                            onClick={() => tabel.weekRegelingId && updateOmgangCell(
                               tabel.id,
                               dag.id,
                               dagdeel.id,
@@ -392,7 +469,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                           </Badge>
                         ) : (
                           <Select
-                            placeholder="Selecteer"
+                            placeholder={tabel.weekRegelingId ? "Selecteer" : "Kies eerst week regeling"}
                             data={getPartijOptions()}
                             value={cellData.verzorgerId || undefined}
                             onChange={(value) => updateOmgangCell(
@@ -403,6 +480,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                               cellData.wisselTijd
                             )}
                             size="xs"
+                            disabled={!tabel.weekRegelingId}
                           />
                         )}
                       </td>
@@ -431,6 +509,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                       }}
                       size="xs"
                       style={{ width: 80 }}
+                      disabled={!tabel.weekRegelingId}
                     />
                   </td>
                 </tr>
@@ -487,4 +566,4 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
       </Stack>
     </Container>
   )
-}
+})

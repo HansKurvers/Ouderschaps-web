@@ -28,7 +28,7 @@ class OmgangService {
     return response.json()
   }
 
-  async createOmgang(dossierId: string, data: Partial<Omgang>): Promise<Omgang> {
+  async createOmgang(dossierId: string, data: any): Promise<Omgang> {
     const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -36,7 +36,9 @@ class OmgangService {
     })
     
     if (!response.ok) {
-      throw new Error('Failed to create omgang')
+      const errorText = await response.text()
+      console.error('Create omgang error:', response.status, errorText)
+      throw new Error(`Failed to create omgang: ${errorText}`)
     }
     
     return response.json()

@@ -163,7 +163,7 @@ export function ContactFormModal({
       opened={opened} 
       onClose={onClose} 
       title={title}
-      size="lg"
+      size="xl"
       closeOnClickOutside={!submitting}
       closeOnEscape={!submitting}
     >

@@ -14,6 +14,7 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { IconTrash, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useRef } from 'react'
 import { dossierService } from '../services/dossier.service'
 import { rolService } from '../services/rol.service'
 import { Persoon, Rol } from '../types/api.types'
@@ -23,7 +24,7 @@ import { DossierNumberStep } from '../components/DossierNumberStep'
 import { PartijSelectStep } from '../components/PartijSelectStep'
 import { KinderenStep } from '../components/KinderenStep'
 import { DossierOverviewStep } from '../components/DossierOverviewStep'
-import { OmgangsregelingStep } from '../components/OmgangsregelingStep'
+import { OmgangsregelingStep, OmgangsregelingStepHandle } from '../components/OmgangsregelingStep'
 import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
 import { submitDossier } from '../utils/dossierSubmit'
@@ -51,6 +52,8 @@ export function DossierFormPage() {
   const [rollen, setRollen] = useState<Rol[]>([])
   const [newContactModalOpen, setNewContactModalOpen] = useState(false)
   const [newContactPartij, setNewContactPartij] = useState<1 | 2 | null>(null)
+  
+  const omgangsregelingRef = useRef<OmgangsregelingStepHandle>(null)
   
   const {
     partij1,
@@ -198,37 +201,51 @@ export function DossierFormPage() {
   }
 
   const handleSubmit = async () => {
-    // For edit mode, update the dossier
-    if (isEdit) {
-      setLoading(true)
-      
-      const result = await submitDossier({
-        isEdit: true,
-        dossierId,
-        dossierNummer: form.values.dossierNummer,
-        partij1,
-        partij2
-      })
-      
-      if (result.success) {
-        notifications.show({
-          title: 'Dossier bijgewerkt!',
-          message: result.message,
-          color: result.message.includes('probleem') ? 'yellow' : 'green',
-        })
-        navigate('/dossiers')
-      } else {
-        notifications.show({
-          title: 'Fout',
-          message: result.message,
-          color: 'red',
-        })
+    setLoading(true)
+    
+    try {
+      // Save omgang data if we're on or past that step
+      if (dossierId && omgangsregelingRef.current) {
+        await omgangsregelingRef.current.saveData()
       }
       
+      // For edit mode, update the dossier
+      if (isEdit) {
+        const result = await submitDossier({
+          isEdit: true,
+          dossierId,
+          dossierNummer: form.values.dossierNummer,
+          partij1,
+          partij2
+        })
+        
+        if (result.success) {
+          notifications.show({
+            title: 'Dossier bijgewerkt!',
+            message: result.message,
+            color: result.message.includes('probleem') ? 'yellow' : 'green',
+          })
+          navigate('/dossiers')
+        } else {
+          notifications.show({
+            title: 'Fout',
+            message: result.message,
+            color: 'red',
+          })
+        }
+      } else {
+        // For new dossiers, just navigate back (dossier was already created)
+        navigate('/dossiers')
+      }
+    } catch (error) {
+      console.error('Error submitting dossier:', error)
+      notifications.show({
+        title: 'Fout',
+        message: 'Er is een fout opgetreden bij het opslaan',
+        color: 'red',
+      })
+    } finally {
       setLoading(false)
-    } else {
-      // For new dossiers, just navigate back (dossier was already created)
-      navigate('/dossiers')
     }
   }
 
@@ -292,6 +309,24 @@ export function DossierFormPage() {
         setLoading(false)
       }
     } else {
+      // Save omgang data when moving from step 3 to 4
+      if (active === 3 && dossierId && omgangsregelingRef.current) {
+        try {
+          setLoading(true)
+          await omgangsregelingRef.current.saveData()
+        } catch (error) {
+          console.error('Error saving omgang data:', error)
+          notifications.show({
+            title: 'Fout',
+            message: 'Kon omgangsregeling niet opslaan',
+            color: 'red'
+          })
+          return
+        } finally {
+          setLoading(false)
+        }
+      }
+      
       setActive((current) => current < 5 ? current + 1 : current)
     }
   }
@@ -386,6 +421,7 @@ export function DossierFormPage() {
 
         {active === 3 && (
           <OmgangsregelingStep
+            ref={omgangsregelingRef}
             dossierId={dossierId}
             partij1={partij1}
             partij2={partij2}
