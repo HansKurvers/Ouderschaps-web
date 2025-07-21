@@ -10,7 +10,8 @@ import {
   ActionIcon,
   TextInput,
   Card,
-  Badge
+  Badge,
+  Checkbox
 } from '@mantine/core'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
@@ -27,6 +28,7 @@ interface WeekTabelData {
   id: string
   weekRegelingId: number | null
   omgangData: Record<string, OmgangCell>
+  wisselTijden: Record<number, string> // Store wisseltijd per day
 }
 
 interface OmgangsregelingStepProps {
@@ -41,6 +43,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
   const [weekRegelingen, setWeekRegelingen] = useState<WeekRegeling[]>([])
   const [weekTabellen, setWeekTabellen] = useState<WeekTabelData[]>([])
   const [loading, setLoading] = useState(true)
+  const [gebruikRoepnamen, setGebruikRoepnamen] = useState(false)
 
   useEffect(() => {
     loadReferenceData()
@@ -105,11 +108,23 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
         return acc
       }, {} as Record<number, Record<string, OmgangCell>>)
       
-      const tabellen = Object.entries(groupedByWeek).map(([weekId, data]) => ({
-        id: Math.random().toString(36).substr(2, 9),
-        weekRegelingId: parseInt(weekId),
-        omgangData: data
-      }))
+      const tabellen = Object.entries(groupedByWeek).map(([weekId, data]) => {
+        const wisselTijden: Record<number, string> = {}
+        // Extract wisseltijden per day from the data
+        Object.entries(data).forEach(([key, cell]) => {
+          const [dagId] = key.split('-').map(Number)
+          if (cell.wisselTijd) {
+            wisselTijden[dagId] = cell.wisselTijd
+          }
+        })
+        
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          weekRegelingId: parseInt(weekId),
+          omgangData: data,
+          wisselTijden
+        }
+      })
       
       setWeekTabellen(tabellen.length > 0 ? tabellen : [createEmptyWeekTabel()])
     } catch (error) {
@@ -120,7 +135,10 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
 
   const createEmptyWeekTabelWithData = (dagenList: Dag[], dagdelenList: Dagdeel[]): WeekTabelData => {
     const emptyData: Record<string, OmgangCell> = {}
+    const wisselTijden: Record<number, string> = {}
+    
     dagenList.forEach(dag => {
+      wisselTijden[dag.id] = ''
       dagdelenList.forEach(dagdeel => {
         const key = `${dag.id}-${dagdeel.id}`
         emptyData[key] = { verzorgerId: null, wisselTijd: null }
@@ -130,14 +148,18 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     return {
       id: Math.random().toString(36).substring(2, 9),
       weekRegelingId: null,
-      omgangData: emptyData
+      omgangData: emptyData,
+      wisselTijden
     }
   }
 
   const createEmptyWeekTabel = (): WeekTabelData => {
     const emptyData: Record<string, OmgangCell> = {}
+    const wisselTijden: Record<number, string> = {}
+    
     if (dagen && dagen.length > 0 && dagdelen && dagdelen.length > 0) {
       dagen.forEach(dag => {
+        wisselTijden[dag.id] = ''
         dagdelen.forEach(dagdeel => {
           const key = `${dag.id}-${dagdeel.id}`
           emptyData[key] = { verzorgerId: null, wisselTijd: null }
@@ -148,7 +170,8 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     return {
       id: Math.random().toString(36).substring(2, 9),
       weekRegelingId: null,
-      omgangData: emptyData
+      omgangData: emptyData,
+      wisselTijden
     }
   }
 
@@ -195,24 +218,37 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     ))
   }
 
+  const getPartijLabel = (persoon: Persoon | null, partijNummer: number) => {
+    if (!persoon) return `Partij ${partijNummer}`
+    
+    if (gebruikRoepnamen) {
+      return persoon.roepnaam || persoon.voornamen || `Partij ${partijNummer}`
+    }
+    return `Partij ${partijNummer}`
+  }
+
   const getPartijOptions = () => {
     const options = []
-    console.log('Partij1:', partij1)
-    console.log('Partij2:', partij2)
     
-    if (partij1?.persoon && partij1.persoon.persoonId) {
-      options.push({
-        value: partij1.persoon.persoonId.toString(),
-        label: getVolledigeNaam(partij1.persoon)
-      })
+    if (partij1?.persoon) {
+      const id = partij1.persoon.persoonId || partij1.persoon.id || partij1.persoon._id
+      if (id) {
+        options.push({
+          value: id.toString(),
+          label: getPartijLabel(partij1.persoon, 1)
+        })
+      }
     }
-    if (partij2?.persoon && partij2.persoon.persoonId) {
-      options.push({
-        value: partij2.persoon.persoonId.toString(),
-        label: getVolledigeNaam(partij2.persoon)
-      })
+    if (partij2?.persoon) {
+      const id = partij2.persoon.persoonId || partij2.persoon.id || partij2.persoon._id
+      if (id) {
+        options.push({
+          value: id.toString(),
+          label: getPartijLabel(partij2.persoon, 2)
+        })
+      }
     }
-    console.log('Partij options:', options)
+    
     return options
   }
 
@@ -257,19 +293,22 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
               {dagdelen?.map(dagdeel => (
                 <th key={dagdeel.id}>{dagdeel.naam}</th>
               ))}
+              <th>Wisseltijd</th>
             </tr>
           </thead>
           <tbody>
-            {dagen?.map(dag => (
-              <tr key={dag.id}>
-                <td><strong>{dag.naam}</strong></td>
-                {dagdelen?.map(dagdeel => {
-                  const key = `${dag.id}-${dagdeel.id}`
-                  const cellData = tabel.omgangData[key] || { verzorgerId: null, wisselTijd: null }
-                  
-                  return (
-                    <td key={dagdeel.id}>
-                      <Stack gap="xs">
+            {dagen?.map(dag => {
+              const dagWisselTijd = tabel.wisselTijden?.[dag.id] || ''
+              
+              return (
+                <tr key={dag.id}>
+                  <td><strong>{dag.naam}</strong></td>
+                  {dagdelen?.map(dagdeel => {
+                    const key = `${dag.id}-${dagdeel.id}`
+                    const cellData = tabel.omgangData[key] || { verzorgerId: null, wisselTijd: null }
+                    
+                    return (
+                      <td key={dagdeel.id}>
                         <Select
                           placeholder="Verzorger"
                           data={getPartijOptions()}
@@ -284,32 +323,44 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                           clearable
                           size="xs"
                         />
-                        {cellData.verzorgerId && (
-                          <TextInput
-                            placeholder="Wissel tijd"
-                            value={cellData.wisselTijd || ''}
-                            onChange={(e) => updateOmgangCell(
-                              tabel.id,
-                              dag.id,
-                              dagdeel.id,
-                              cellData.verzorgerId,
-                              e.currentTarget.value || null
-                            )}
-                            size="xs"
-                          />
-                        )}
-                      </Stack>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+                      </td>
+                    )
+                  })}
+                  <td>
+                    <TextInput
+                      placeholder="HH:MM"
+                      value={dagWisselTijd}
+                      onChange={(event) => {
+                        const newValue = event.currentTarget.value
+                        // Update wisseltijd for this day
+                        setWeekTabellen(prevTabellen => 
+                          prevTabellen.map(t => 
+                            t.id === tabel.id 
+                              ? {
+                                  ...t,
+                                  wisselTijden: {
+                                    ...t.wisselTijden,
+                                    [dag.id]: newValue
+                                  }
+                                }
+                              : t
+                          )
+                        )
+                      }}
+                      size="xs"
+                      style={{ width: 80 }}
+                    />
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </Table>
       </Card>
     )
   }
 
+  //TODO check loading problems
   if (loading) {
     return <Container>Laden...</Container>
   }
@@ -317,6 +368,13 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
   return (
     <Container>
       <Title order={2} mb="lg">Omgangsregeling</Title>
+      
+      <Checkbox
+        label="Gebruik roepnamen in plaats van 'Partij 1' en 'Partij 2'"
+        checked={gebruikRoepnamen}
+        onChange={(event) => setGebruikRoepnamen(event.currentTarget.checked)}
+        mb="lg"
+      />
       
       <Stack gap="lg">
         {weekTabellen.map((tabel) => renderWeekTabel(tabel))}
