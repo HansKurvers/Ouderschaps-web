@@ -28,8 +28,12 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
 
   const handleSelectKind = async (persoon: Persoon) => {
     try {
+      console.log('Selected persoon:', persoon)
+      const kindId = persoon.persoonId || persoon.id || persoon._id
+      console.log('Using kindId:', kindId)
+      
       const data: AddKindData = {
-        kindId: persoon.persoonId,
+        kindId: String(kindId),
         ouderRelaties: [] // Tijdelijk leeg
       }
       await addKind(data)
@@ -41,8 +45,12 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
 
   const handleCreateKind = async (persoon: Persoon) => {
     try {
+      console.log('Created persoon:', persoon)
+      const kindId = persoon.persoonId || persoon.id || persoon._id
+      console.log('Using kindId:', kindId)
+      
       const data: AddKindData = {
-        kindId: persoon.persoonId,
+        kindId: String(kindId),
         ouderRelaties: [] // Tijdelijk leeg
       }
       await addKind(data)
@@ -98,7 +106,6 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
           setShowPersonenModal(false)
           setShowContactModal(true)
         }}
-        excludeIds={getKindIds()}
         title="Selecteer een kind"
       />
 

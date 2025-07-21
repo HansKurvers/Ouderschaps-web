@@ -19,13 +19,20 @@ export const kinderenService = {
   },
 
   async addKindToDossier(dossierId: string, data: AddKindData): Promise<DossierKind> {
+    // Transform data to match API expectations
+    const requestBody = {
+      kindId: data.kindId,
+      kindData: data.kindData,
+      ouderRelaties: data.ouderRelaties || []
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/dossiers/${dossierId}/kinderen`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-user-id': '1'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(requestBody)
     })
 
     if (!response.ok) {

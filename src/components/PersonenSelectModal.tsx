@@ -53,8 +53,10 @@ export function PersonenSelectModal({
       setLoading(true)
       setError(null)
       const data = await persoonService.getPersonen()
+      console.log('Loaded personen:', data)
       setPersonen(data)
     } catch (err) {
+      console.error('Error loading personen:', err)
       setError('Kon personen niet laden')
       setPersonen([])
     } finally {
@@ -63,7 +65,9 @@ export function PersonenSelectModal({
   }
 
   const filterPersonen = () => {
+    console.log('Filtering personen. Total:', personen.length, 'ExcludeIds:', excludeIds)
     let filtered = personen.filter(p => !excludeIds.includes(p.persoonId))
+    console.log('After exclude filter:', filtered.length)
     
     if (searchQuery) {
       filtered = filtered.filter(persoon => {
@@ -77,6 +81,7 @@ export function PersonenSelectModal({
       })
     }
     
+    console.log('Final filtered:', filtered.length)
     setFilteredPersonen(filtered)
   }
 
