@@ -23,7 +23,6 @@ export function ContactPage() {
   })
 
   const handleSubmit = (values: FormValues) => {
-    console.log('Form submitted:', values)
     notifications.show({
       title: 'Bericht verzonden!',
       message: 'We nemen zo snel mogelijk contact met je op.',

@@ -20,6 +20,7 @@ export interface Dossier {
 export interface Persoon {
   _id: string
   persoonId: string
+  id?: number | string  // Some responses use id instead of persoonId
   voorletters?: string
   voornamen?: string
   roepnaam?: string

@@ -81,7 +81,6 @@ export const dossierService = {
 
   // Voeg een partij toe aan een dossier
   async addDossierPartij(dossierId: string, data: { persoonId: string; rolId: number }): Promise<DossierPartij> {
-    console.log('Adding partij to dossier:', dossierId, 'with data:', data)
     return apiService.post<DossierPartij>(`/api/dossiers/${dossierId}/partijen`, data)
   },
 

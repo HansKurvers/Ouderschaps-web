@@ -85,13 +85,9 @@ export function DossierFormPage() {
     try {
       setLoading(true)
       
-      if (ENABLE_DOSSIER_LOADING) {
-        // Normale loading flow
-        console.log('Loading dossier with ID:', id)
-        
+      if (ENABLE_DOSSIER_LOADING) { 
         // Probeer het dossier op te halen
         const dossier = await dossierService.getDossier(id)
-        console.log('Loaded dossier:', dossier)
         
         // Zet de form values
         form.setValues({
@@ -101,7 +97,6 @@ export function DossierFormPage() {
         // Probeer de partijen op te halen
         try {
           const partijen = await dossierService.getDossierPartijen(id)
-          console.log('Loaded partijen:', partijen)
           
           // Map de partijen naar partij1 en partij2
           if (partijen && partijen.length > 0) {
@@ -121,8 +116,6 @@ export function DossierFormPage() {
           // The user can still edit the dossier number and other details
         }
       } else {
-        // Tijdelijke workaround: gebruik default waarden
-        console.log('Dossier loading disabled, using default values for ID:', id)
         // Voor edit mode kunnen we het dossiernummer niet weten zonder de API
         form.setValues({
           dossierNummer: ''
@@ -148,10 +141,13 @@ export function DossierFormPage() {
   }
 
   const handlePersonSelect = (persoon: Persoon) => {
+
     if (selectingPartij === 1) {
-      setPartij1({ ...partij1, persoon })
+      const newPartij1 = { ...partij1, persoon }
+      setPartij1(newPartij1)
     } else if (selectingPartij === 2) {
-      setPartij2({ ...partij2, persoon })
+      const newPartij2 = { ...partij2, persoon }
+      setPartij2(newPartij2)
     }
     setSelectingPartij(null)
   }
@@ -196,42 +192,75 @@ export function DossierFormPage() {
       
       if (isEdit && dossierId) {
         // Update dossier - get existing dossier data since dossierNummer cannot be updated
-        console.log('Updating dossier:', dossierId)
         dossier = await dossierService.getDossier(dossierId)
         
-        // Update partijen in edit mode
-        console.log('Updating partijen for dossier:', dossierId)
         
         // First, get existing partijen to compare
         try {
           const existingPartijen = await dossierService.getDossierPartijen(dossierId)
+          
           const existingPartij1 = existingPartijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
           const existingPartij2 = existingPartijen.find(p => p.rol?.naam === 'Partij 2' || p.rolId === '2')
           
+          
           // Remove old partijen if they exist
           if (existingPartij1) {
-            await dossierService.removeDossierPartij(dossierId, existingPartij1.dossierPartijId)
+            const partij1Id = existingPartij1.dossierPartijId || existingPartij1._id || (existingPartij1 as any).id
+            if (partij1Id) {
+              await dossierService.removeDossierPartij(dossierId, partij1Id)
+            } else {
+              console.error('No valid ID found for existingPartij1')
+            }
           }
           if (existingPartij2) {
-            await dossierService.removeDossierPartij(dossierId, existingPartij2.dossierPartijId)
+            const partij2Id = existingPartij2.dossierPartijId || existingPartij2._id || (existingPartij2 as any).id
+            if (partij2Id) {
+              await dossierService.removeDossierPartij(dossierId, partij2Id)
+            } else {
+              console.error('No valid ID found for existingPartij2')
+            }
           }
           
           // Add new partijen
           if (partij1.persoon) {
+
+            // Check if persoonId exists, fallback to id
+            const persoonId = partij1.persoon.persoonId || (partij1.persoon.id ? String(partij1.persoon.id) : null)
+            
+            if (!persoonId) {
+              console.error('No persoonId found for partij1:', partij1.persoon)
+              throw new Error('Persoon ID is required')
+            }
+            
             await dossierService.addDossierPartij(dossierId, {
-              persoonId: partij1.persoon.persoonId,
-              rolId: parseInt(partij1.rolId)
+              persoonId: persoonId,
+              rolId: parseInt(partij1.rolId || '1')
             })
           }
           
           if (partij2.persoon) {
+            // Check if persoonId exists, fallback to id
+            const persoonId = partij2.persoon.persoonId || (partij2.persoon.id ? String(partij2.persoon.id) : null)
+            
+            if (!persoonId) {
+              console.error('No persoonId found for partij2:', partij2.persoon)
+              throw new Error('Persoon ID is required')
+            }
+            
             await dossierService.addDossierPartij(dossierId, {
-              persoonId: partij2.persoon.persoonId,
-              rolId: parseInt(partij2.rolId)
+              persoonId: persoonId,
+              rolId: parseInt(partij2.rolId || '2')
             })
           }
+          
         } catch (partijErr) {
           console.error('Error updating partijen:', partijErr)
+          console.error('Error details:', {
+            error: partijErr,
+            partij1: partij1,
+            partij2: partij2,
+            dossierId: dossierId
+          })
           notifications.show({
             title: 'Waarschuwing',
             message: 'Dossier bijgewerkt, maar er was een probleem met het bijwerken van partijen',
@@ -239,35 +268,46 @@ export function DossierFormPage() {
           })
         }
         
+        const dossierNummer = dossier.dossierNummer || dossier.dossier_nummer || form.values.dossierNummer || dossierId
         notifications.show({
           title: 'Dossier bijgewerkt!',
-          message: `Dossier ${dossier.dossierNummer || dossier.dossier_nummer} is succesvol bijgewerkt`,
+          message: `Dossier ${dossierNummer} is succesvol bijgewerkt`,
           color: 'green',
         })
       } else {
         // Create new dossier
-        console.log('Creating dossier:', form.values)
         dossier = await dossierService.createDossier({
           dossierNummer: form.values.dossierNummer
         })
         
         // Add partijen alleen voor nieuwe dossiers
         const dossierIdToUse = String(dossier.id) // Gebruik het database ID
-        console.log('Adding partijen to dossier:', dossierIdToUse)
         
         if (partij1.persoon && dossierIdToUse) {
-          console.log('Adding partij 1:', partij1.persoon.persoonId, 'rol:', partij1.rolId)
+          
+          const persoonId = partij1.persoon.persoonId || (partij1.persoon.id ? String(partij1.persoon.id) : null)
+          if (!persoonId) {
+            console.error('No persoonId found for partij1 in new dossier:', partij1.persoon)
+            throw new Error('Persoon ID is required for partij 1')
+          }
+          
           await dossierService.addDossierPartij(dossierIdToUse, {
-            persoonId: partij1.persoon.persoonId,
-            rolId: parseInt(partij1.rolId)
+            persoonId: persoonId,
+            rolId: parseInt(partij1.rolId || '1')
           })
         }
         
         if (partij2.persoon && dossierIdToUse) {
-          console.log('Adding partij 2:', partij2.persoon.persoonId, 'rol:', partij2.rolId)
+          
+          const persoonId = partij2.persoon.persoonId || (partij2.persoon.id ? String(partij2.persoon.id) : null)
+          if (!persoonId) {
+            console.error('No persoonId found for partij2 in new dossier:', partij2.persoon)
+            throw new Error('Persoon ID is required for partij 2')
+          }
+          
           await dossierService.addDossierPartij(dossierIdToUse, {
-            persoonId: partij2.persoon.persoonId,
-            rolId: parseInt(partij2.rolId)
+            persoonId: persoonId,
+            rolId: parseInt(partij2.rolId || '2')
           })
         }
         

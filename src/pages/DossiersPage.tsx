@@ -118,7 +118,7 @@ export function DossiersPage() {
                 <Table.Td>
                   <div>
                     <Text>{dossier.displayNaam || `Dossier ${dossier.dossierNummer || dossier.dossier_nummer}`}</Text>
-                    <Text size="xs" c="dimmed">#{dossier.dossierNummer || dossier.dossier_nummer}</Text>
+                    <Text size="xs" c="dimmed">#{dossier.id}</Text>
                   </div>
                 </Table.Td>
                 <Table.Td>
