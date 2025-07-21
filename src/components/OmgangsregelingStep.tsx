@@ -218,6 +218,39 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     ))
   }
 
+  const applyPreset = (tabelId: string, preset: string) => {
+    if (!preset || !partij1?.persoon || !partij2?.persoon) return
+    
+    const [dagen1, dagen2] = preset.split('-').map(Number)
+    const partij1Id = (partij1.persoon.persoonId || partij1.persoon.id || partij1.persoon._id)?.toString()
+    const partij2Id = (partij2.persoon.persoonId || partij2.persoon.id || partij2.persoon._id)?.toString()
+    
+    if (!partij1Id || !partij2Id || !dagen || !dagdelen) return
+    
+    let dayCount = 0
+    const updatedOmgangData: Record<string, OmgangCell> = {}
+    
+    // Simple allocation: first dagen1 days go to partij1, rest to partij2
+    dagen.forEach(dag => {
+      const verzorgerId = dayCount < dagen1 ? partij1Id : partij2Id
+      dagdelen.forEach(dagdeel => {
+        const key = `${dag.id}-${dagdeel.id}`
+        updatedOmgangData[key] = { verzorgerId, wisselTijd: null }
+      })
+      dayCount++
+    })
+    
+    setWeekTabellen(weekTabellen.map(tabel => 
+      tabel.id === tabelId 
+        ? {
+            ...tabel,
+            omgangData: updatedOmgangData,
+            wisselTijden: {} // Clear wisseltijden for presets
+          }
+        : tabel
+    ))
+  }
+
   const getPartijLabel = (persoon: Persoon | null, partijNummer: number) => {
     if (!persoon) return `Partij ${partijNummer}`
     
@@ -267,6 +300,22 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
               value={tabel.weekRegelingId?.toString() || null}
               onChange={(value) => updateWeekRegeling(tabel.id, value ? parseInt(value) : null)}
               style={{ width: 300 }}
+            />
+            <Select
+              placeholder="Verdeling preset"
+              data={[
+                { value: '0-7', label: '0-7 (alle dagen partij 2)' },
+                { value: '1-6', label: '1-6' },
+                { value: '2-5', label: '2-5' },
+                { value: '3-4', label: '3-4' },
+                { value: '4-3', label: '4-3' },
+                { value: '5-2', label: '5-2' },
+                { value: '6-1', label: '6-1' },
+                { value: '7-0', label: '7-0 (alle dagen partij 1)' }
+              ]}
+              onChange={(value) => applyPreset(tabel.id, value || '')}
+              clearable
+              style={{ width: 200 }}
             />
             {selectedWeekRegeling && (
               <Badge color="blue" variant="light">
