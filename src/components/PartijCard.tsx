@@ -2,6 +2,11 @@ import { Card, Group, Text, Badge, Button } from '@mantine/core'
 import { IconUserPlus } from '@tabler/icons-react'
 import { Persoon, Rol } from '../types/api.types'
 
+const PARTIJ_COLORS = {
+  partij1: '#58b3e5',
+  partij2: '#ff9f40'
+}
+
 interface PartijCardProps {
   partijNumber: 1 | 2
   persoon: Persoon | null
@@ -21,19 +26,24 @@ export function PartijCard({
 }: PartijCardProps) {
   const partijLabel = `Partij ${partijNumber}`
   const rolNaam = rollen.find(r => String(r.id) === rolId)?.naam || partijLabel
+  const partijColor = partijNumber === 1 ? PARTIJ_COLORS.partij1 : PARTIJ_COLORS.partij2
 
   return (
     <div>
-      <Text fw={500} mb="sm">{partijLabel}</Text>
+      <Group mb="sm">
+        <Badge color={partijColor} size="lg" variant="light">
+          {partijLabel}
+        </Badge>
+      </Group>
       {persoon ? (
-        <Card withBorder p="md">
+        <Card withBorder p="md" style={{ borderColor: partijColor, borderWidth: 2 }}>
           <Group justify="space-between">
             <div>
               <Text fw={500}>{getVolledigeNaam(persoon)}</Text>
               <Text size="sm" c="dimmed">{persoon.email || 'Geen email'}</Text>
-              <Badge mt="xs">{rolNaam}</Badge>
+              <Badge mt="xs" color={partijColor} variant="light">{rolNaam}</Badge>
             </div>
-            <Button variant="light" onClick={onSelect}>
+            <Button variant="light" color={partijColor} onClick={onSelect}>
               Wijzig persoon
             </Button>
           </Group>
@@ -42,6 +52,8 @@ export function PartijCard({
         <Button
           leftSection={<IconUserPlus size={20} />}
           onClick={onSelect}
+          color={partijColor}
+          variant="light"
         >
           Selecteer persoon voor {partijLabel}
         </Button>

@@ -22,3 +22,5 @@ export function DossierNumberStep({ form }: DossierNumberStepProps) {
     </Stack>
   )
 }
+
+//TODO dossier nummer automatisch genereren en aanpasbaar maken

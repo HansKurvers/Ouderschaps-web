@@ -11,7 +11,8 @@ import {
   TextInput,
   Card,
   Badge,
-  Checkbox
+  Checkbox,
+  ColorSwatch
 } from '@mantine/core'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
@@ -35,6 +36,11 @@ interface OmgangsregelingStepProps {
   dossierId?: string
   partij1: { persoon: Persoon | null }
   partij2: { persoon: Persoon | null }
+}
+
+const PARTIJ_COLORS = {
+  partij1: '#58b3e5',
+  partij2: '#ff9f40'
 }
 
 export function OmgangsregelingStep({ dossierId, partij1, partij2 }: OmgangsregelingStepProps) {
@@ -260,6 +266,16 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     return `Partij ${partijNummer}`
   }
 
+  const getPartijColor = (verzorgerId: string | null) => {
+    if (!verzorgerId) return undefined
+    const partij1Id = (partij1?.persoon?.persoonId || partij1?.persoon?.id || partij1?.persoon?._id)?.toString()
+    const partij2Id = (partij2?.persoon?.persoonId || partij2?.persoon?.id || partij2?.persoon?._id)?.toString()
+    
+    if (verzorgerId === partij1Id) return PARTIJ_COLORS.partij1
+    if (verzorgerId === partij2Id) return PARTIJ_COLORS.partij2
+    return undefined
+  }
+
   const getPartijOptions = () => {
     const options = []
     
@@ -358,20 +374,37 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                     
                     return (
                       <td key={dagdeel.id}>
-                        <Select
-                          placeholder="Verzorger"
-                          data={getPartijOptions()}
-                          value={cellData.verzorgerId || undefined}
-                          onChange={(value) => updateOmgangCell(
-                            tabel.id,
-                            dag.id,
-                            dagdeel.id,
-                            value || null,
-                            cellData.wisselTijd
-                          )}
-                          clearable
-                          size="xs"
-                        />
+                        {cellData.verzorgerId ? (
+                          <Badge 
+                            color={getPartijColor(cellData.verzorgerId)} 
+                            variant="light"
+                            fullWidth
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => updateOmgangCell(
+                              tabel.id,
+                              dag.id,
+                              dagdeel.id,
+                              null,
+                              cellData.wisselTijd
+                            )}
+                          >
+                            {getPartijOptions().find(o => o.value === cellData.verzorgerId)?.label || 'Onbekend'}
+                          </Badge>
+                        ) : (
+                          <Select
+                            placeholder="Selecteer"
+                            data={getPartijOptions()}
+                            value={cellData.verzorgerId || undefined}
+                            onChange={(value) => updateOmgangCell(
+                              tabel.id,
+                              dag.id,
+                              dagdeel.id,
+                              value || null,
+                              cellData.wisselTijd
+                            )}
+                            size="xs"
+                          />
+                        )}
                       </td>
                     )
                   })}
@@ -418,12 +451,26 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     <Container>
       <Title order={2} mb="lg">Omgangsregeling</Title>
       
-      <Checkbox
-        label="Gebruik roepnamen in plaats van 'Partij 1' en 'Partij 2'"
-        checked={gebruikRoepnamen}
-        onChange={(event) => setGebruikRoepnamen(event.currentTarget.checked)}
-        mb="lg"
-      />
+      <Stack gap="md" mb="lg">
+        <Checkbox
+          label="Gebruik roepnamen in plaats van 'Partij 1' en 'Partij 2'"
+          checked={gebruikRoepnamen}
+          onChange={(event) => setGebruikRoepnamen(event.currentTarget.checked)}
+        />
+        
+        <Group gap="lg">
+          {partij1?.persoon && (
+            <Badge color={PARTIJ_COLORS.partij1} size="lg" variant="light">
+              {getPartijLabel(partij1.persoon, 1)}
+            </Badge>
+          )}
+          {partij2?.persoon && (
+            <Badge color={PARTIJ_COLORS.partij2} size="lg" variant="light">
+              {getPartijLabel(partij2.persoon, 2)}
+            </Badge>
+          )}
+        </Group>
+      </Stack>
       
       <Stack gap="lg">
         {weekTabellen.map((tabel) => renderWeekTabel(tabel))}
