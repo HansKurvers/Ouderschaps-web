@@ -6,7 +6,7 @@ import { ContactForm, ContactFormValues } from './ContactForm'
 import { persoonService } from '../services/persoon.service'
 import { rolService } from '../services/rol.service'
 import { Persoon, Rol } from '../types/api.types'
-import { getContactFormValidation } from '../utils/contact.validation'
+import { getContactFormValidation, transformPostcode } from '../utils/contact.validation'
 
 interface ContactFormModalProps {
   opened: boolean
@@ -38,8 +38,14 @@ export function ContactFormModal({
       adres: '',
       postcode: '',
       plaats: '',
-      rolId: rolId || '1'
+      rolId: rolId || '1',
+      geboortedatum: null,
+      geslacht: ''
     },
+    transformValues: (values) => ({
+      ...values,
+      postcode: transformPostcode(values.postcode || '')
+    }),
     validate: getContactFormValidation(false) // rolId is not required in modal
   })
 
@@ -81,6 +87,8 @@ export function ContactFormModal({
         adres: values.adres || undefined,
         postcode: values.postcode || undefined,
         plaats: values.plaats || undefined,
+        geslacht: values.geslacht || undefined,
+        // TODO: geboortedatum wordt nog niet ondersteund door de backend
       }
 
       // Maak nieuwe persoon aan

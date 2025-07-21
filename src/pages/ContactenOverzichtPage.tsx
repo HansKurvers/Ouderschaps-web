@@ -202,7 +202,7 @@ export function ContactenOverzichtPage() {
           </Table.Thead>
           <Table.Tbody>
             {filteredPersonen.map((persoon) => (
-              <Table.Tr key={persoon._id}>
+              <Table.Tr key={persoon.persoonId || persoon._id || persoon.id}>
                 <Table.Td>{getVolledigeNaam(persoon)}</Table.Td>
                 <Table.Td>{persoon.email || '-'}</Table.Td>
                 <Table.Td>{persoon.telefoon || '-'}</Table.Td>

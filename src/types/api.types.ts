@@ -30,8 +30,8 @@ export interface Persoon {
   adres?: string
   postcode?: string
   plaats?: string
-  geboorte_plaats?: string
-  geboorte_datum?: string
+  geboortePlaats?: string
+  geboortedatum?: string
   nationaliteit_1?: string
   nationaliteit_2?: string
   telefoon?: string

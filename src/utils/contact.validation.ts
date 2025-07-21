@@ -10,6 +10,8 @@ export interface ContactFormValues {
   adres?: string
   postcode?: string
   plaats?: string
+  geboortedatum?: string | Date | null
+  geslacht?: string
 }
 
 export const contactFormValidation = {
@@ -54,10 +56,48 @@ export const contactFormValidation = {
     return null
   },
   
+  postcode: (value: string | undefined) => {
+    if (!value) return null // Postcode is optioneel
+    
+    // Nederlandse postcode: 4 cijfers + 2 letters
+    const postcodeRegex = /^\d{4}\s?[A-Za-z]{2}$/
+    if (!postcodeRegex.test(value.trim())) {
+      return 'Ongeldige postcode (bijv. 1234 AB)'
+    }
+    return null
+  },
+  
   rolId: (value: string | undefined, isRequired: boolean = false) => {
     if (isRequired && !value) {
       return 'Selecteer een rol'
     }
+    return null
+  },
+  
+  geboortedatum: (value: string | Date | null | undefined) => {
+    if (!value) return null // Geboortedatum is optioneel
+    
+    const date = value instanceof Date ? value : new Date(value)
+    if (isNaN(date.getTime())) {
+      return 'Ongeldige datum'
+    }
+    
+    // Check of de datum niet in de toekomst ligt
+    if (date > new Date()) {
+      return 'Geboortedatum kan niet in de toekomst liggen'
+    }
+    
+    return null
+  },
+  
+  geslacht: (value: string | undefined) => {
+    if (!value) return null // Geslacht is optioneel
+    
+    const validGeslachten = ['Man', 'Vrouw', 'Anders']
+    if (!validGeslachten.includes(value)) {
+      return 'Selecteer een geldig geslacht'
+    }
+    
     return null
   }
 }
@@ -69,11 +109,20 @@ export function getContactFormValidation(requireRole: boolean = false) {
     achternaam: contactFormValidation.achternaam,
     email: contactFormValidation.email,
     telefoon: contactFormValidation.telefoon,
+    postcode: contactFormValidation.postcode,
+    geboortedatum: contactFormValidation.geboortedatum,
+    geslacht: contactFormValidation.geslacht,
     ...(requireRole && {
       rolId: (value: string | undefined) => contactFormValidation.rolId(value, true)
     })
   }
 }
+
+// Transform functie voor postcode (automatisch hoofdletters)
+export function transformPostcode(value: string): string {
+  return value.toUpperCase()
+}
+
 
 // Initial values voor nieuwe contact formulieren
 export const contactFormInitialValues: ContactFormValues = {
@@ -84,5 +133,10 @@ export const contactFormInitialValues: ContactFormValues = {
   email: '',
   telefoon: '',
   opmerking: '',
-  rolId: ''
+  rolId: '',
+  adres: '',
+  postcode: '',
+  plaats: '',
+  geboortedatum: null,
+  geslacht: ''
 }

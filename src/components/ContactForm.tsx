@@ -7,6 +7,7 @@ import {
   Grid,
   Divider
 } from '@mantine/core'
+import { DateInput } from '@mantine/dates'
 import { UseFormReturnType } from '@mantine/form'
 import { IconUserPlus, IconDeviceFloppy } from '@tabler/icons-react'
 import { Rol } from '../types/api.types'
@@ -21,6 +22,8 @@ export interface ContactFormValues {
   postcode: string
   plaats: string
   rolId: string
+  geboortedatum: string | Date | null
+  geslacht: string
 }
 
 interface ContactFormProps {
@@ -72,6 +75,32 @@ export function ContactForm({
               label="Achternaam"
               placeholder="Janssen"
               {...form.getInputProps('achternaam')}
+            />
+          </Grid.Col>
+        </Grid>
+
+        <Divider label="Persoonlijke gegevens" />
+        
+        <Grid>
+          <Grid.Col span={6}>
+            <DateInput
+              label="Geboortedatum"
+              placeholder="Selecteer datum"
+              valueFormat="DD-MM-YYYY"
+              {...form.getInputProps('geboortedatum')}
+            />
+          </Grid.Col>
+          <Grid.Col span={6}>
+            <Select
+              label="Geslacht"
+              placeholder="Selecteer geslacht"
+              data={[
+                { value: 'Man', label: 'Man' },
+                { value: 'Vrouw', label: 'Vrouw' },
+                { value: 'Anders', label: 'Anders' },
+                { value: 'Onbekend', label: 'Onbekend' }
+              ]}
+              {...form.getInputProps('geslacht')}
             />
           </Grid.Col>
         </Grid>

@@ -13,6 +13,7 @@ import {
   Grid,
   Divider
 } from '@mantine/core'
+import { DateInput } from '@mantine/dates'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { IconUserPlus, IconDeviceFloppy } from '@tabler/icons-react'
@@ -20,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { persoonService } from '../services/persoon.service'
 import { rolService } from '../services/rol.service'
 import { Persoon, Rol } from '../types/api.types'
-import { getContactFormValidation, ContactFormValues } from '../utils/contact.validation'
+import { getContactFormValidation, ContactFormValues, transformPostcode } from '../utils/contact.validation'
 
 
 export function ContactFormPage() {
@@ -45,8 +46,14 @@ export function ContactFormPage() {
       plaats: '',
       rolId: '',
       roepnaam: '',
-      opmerking: ''
+      opmerking: '',
+      geboortedatum: null,
+      geslacht: ''
     },
+    transformValues: (values) => ({
+      ...values,
+      postcode: transformPostcode(values.postcode || '')
+    }),
     validate: getContactFormValidation(true) // rolId is required in this form
   })
 
@@ -83,6 +90,8 @@ export function ContactFormPage() {
         postcode: persoon.postcode || '',
         plaats: persoon.plaats || '',
         rolId: '1', // TODO: Get actual role from dossier partij
+        geboortedatum: persoon.geboortedatum || null,
+        geslacht: persoon.geslacht || '',
       })
     } catch (err) {
       notifications.show({
@@ -99,6 +108,7 @@ export function ContactFormPage() {
       setSubmitting(true)
       
       // Maak persoon data object
+      // Maak persoon data object
       const persoonData: Partial<Persoon> = {
         voornamen: values.voornamen,
         tussenvoegsel: values.tussenvoegsel || undefined,
@@ -108,6 +118,8 @@ export function ContactFormPage() {
         adres: values.adres || undefined,
         postcode: values.postcode || undefined,
         plaats: values.plaats || undefined,
+        geslacht: values.geslacht || undefined,
+        // TODO: geboortedatum wordt nog niet ondersteund door de backend
       }
 
       let resultPersoon: Persoon
@@ -196,6 +208,30 @@ export function ContactFormPage() {
                   placeholder="Berg"
                   required
                   {...form.getInputProps('achternaam')}
+                />
+              </Grid.Col>
+            </Grid>
+
+            <Grid>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <DateInput
+                  label="Geboortedatum"
+                  placeholder="Selecteer datum"
+                  valueFormat="DD-MM-YYYY"
+                  {...form.getInputProps('geboortedatum')}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Select
+                  label="Geslacht"
+                  placeholder="Selecteer geslacht"
+                  data={[
+                    { value: 'Man', label: 'Man' },
+                    { value: 'Vrouw', label: 'Vrouw' },
+                    { value: 'Anders', label: 'Anders' },
+                    { value: 'Onbekend', label: 'Onbekend' }
+                  ]}
+                  {...form.getInputProps('geslacht')}
                 />
               </Grid.Col>
             </Grid>
