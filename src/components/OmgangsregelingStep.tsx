@@ -468,14 +468,21 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
           </Text>
         )}
         
-        <Table style={{ opacity: tabel.weekRegelingId ? 1 : 0.5 }}>
+        <Table style={{ opacity: tabel.weekRegelingId ? 1 : 0.5 }} cellPadding="md" withTableBorder>
           <thead>
             <tr>
-              <th>Dag</th>
+              <th style={{ padding: '12px' }}>Dag</th>
               {dagdelen?.map(dagdeel => (
-                <th key={dagdeel.id}>{dagdeel.naam}</th>
+                <th key={dagdeel.id} style={{ padding: '12px' }}>{dagdeel.naam}</th>
               ))}
-              <th>Wisseltijd</th>
+              <th style={{ padding: '12px' }}>
+                <Group gap="xs">
+                  <Text size="sm">Wisseltijd</Text>
+                  <Tooltip label="Tijdstip waarop het kind wordt overgedragen tussen de partijen (bijv. 18:00)">
+                    <IconInfoCircle size={14} style={{ opacity: 0.5 }} />
+                  </Tooltip>
+                </Group>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -575,6 +582,8 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
       </Card>
     )
   }
+
+  //TODO Save week should be a single query in the backend instead of multiple
 
   //TODO check loading problems
   if (loading) {
