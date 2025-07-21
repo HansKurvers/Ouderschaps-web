@@ -22,6 +22,7 @@ import { dossierService } from '../services/dossier.service'
 import { rolService } from '../services/rol.service'
 import { Dossier, Persoon, Rol } from '../types/api.types'
 import { PersonenSelectModal } from '../components/PersonenSelectModal'
+import { ContactFormModal } from '../components/ContactFormModal'
 
 interface DossierFormValues {
   dossierNummer: string
@@ -46,6 +47,8 @@ export function DossierFormPage() {
   const [selectModalOpen, setSelectModalOpen] = useState(false)
   const [selectingPartij, setSelectingPartij] = useState<1 | 2 | null>(null)
   const [rollen, setRollen] = useState<Rol[]>([])
+  const [newContactModalOpen, setNewContactModalOpen] = useState(false)
+  const [newContactPartij, setNewContactPartij] = useState<1 | 2 | null>(null)
   
   const [partij1, setPartij1] = useState<PartijData>({ persoon: null, rolId: '1' })
   const [partij2, setPartij2] = useState<PartijData>({ persoon: null, rolId: '2' })
@@ -141,7 +144,8 @@ export function DossierFormPage() {
   }
 
   const handlePersonSelect = (persoon: Persoon) => {
-
+    console.log('Person selected:', persoon, 'for partij:', selectingPartij)
+    
     if (selectingPartij === 1) {
       const newPartij1 = { ...partij1, persoon }
       setPartij1(newPartij1)
@@ -149,15 +153,37 @@ export function DossierFormPage() {
       const newPartij2 = { ...partij2, persoon }
       setPartij2(newPartij2)
     }
+    
+    // Reset selectingPartij na succesvol selecteren
     setSelectingPartij(null)
   }
 
   const handleCreateNewPerson = () => {
-    // Navigeer naar contact form met return URL
-    const returnUrl = isEdit ? `/dossiers/bewerk/${dossierId}` : '/dossiers/nieuw'
-    sessionStorage.setItem('returnUrl', returnUrl)
-    sessionStorage.setItem('returnStep', String(active))
-    navigate('/contacten/nieuw')
+    console.log('Opening new contact modal for partij:', selectingPartij)
+    // Sla op voor welke partij we een nieuw contact maken
+    setNewContactPartij(selectingPartij)
+    // Open de modal voor nieuw contact in plaats van navigeren
+    setSelectModalOpen(false)
+    setNewContactModalOpen(true)
+  }
+  
+  const handleNewContactSuccess = (persoon: Persoon) => {
+    console.log('New contact created:', persoon)
+    console.log('Adding to partij:', newContactPartij)
+    
+    // Voeg de nieuwe persoon toe aan de juiste partij
+    if (newContactPartij === 1) {
+      console.log('Setting partij1 with new person')
+      setPartij1({ ...partij1, persoon })
+    } else if (newContactPartij === 2) {
+      console.log('Setting partij2 with new person')
+      setPartij2({ ...partij2, persoon })
+    }
+    
+    // Reset states en sluit modal
+    setNewContactPartij(null)
+    setSelectingPartij(null)
+    setNewContactModalOpen(false)
   }
 
   const getVolledigeNaam = (persoon: Persoon) => {
@@ -568,7 +594,7 @@ export function DossierFormPage() {
         opened={selectModalOpen}
         onClose={() => {
           setSelectModalOpen(false)
-          setSelectingPartij(null)
+          // NIET selectingPartij resetten hier - we hebben het misschien nog nodig voor nieuwe contact
         }}
         onSelect={handlePersonSelect}
         onCreateNew={handleCreateNewPerson}
@@ -593,6 +619,18 @@ export function DossierFormPage() {
           </Button>
         </Group>
       </Modal>
+
+      <ContactFormModal
+        opened={newContactModalOpen}
+        onClose={() => {
+          setNewContactModalOpen(false)
+          setNewContactPartij(null)
+          setSelectingPartij(null)
+        }}
+        onSuccess={handleNewContactSuccess}
+        rolId={newContactPartij === 1 ? '1' : newContactPartij === 2 ? '2' : '1'}
+        title={newContactPartij ? `Nieuw contact toevoegen voor ${newContactPartij === 1 ? 'Partij 1' : 'Partij 2'}` : 'Nieuw contact toevoegen'}
+      />
     </Container>
   )
 }

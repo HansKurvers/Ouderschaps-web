@@ -22,7 +22,7 @@ export function ContactPage() {
     },
   })
 
-  const handleSubmit = (values: FormValues) => {
+  const handleSubmit = () => {
     notifications.show({
       title: 'Bericht verzonden!',
       message: 'We nemen zo snel mogelijk contact met je op.',

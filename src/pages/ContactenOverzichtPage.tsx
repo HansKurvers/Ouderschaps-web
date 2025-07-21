@@ -223,7 +223,7 @@ export function ContactenOverzichtPage() {
                     size="xs"
                     variant="light"
                     leftSection={<IconEdit size={16} />}
-                    onClick={() => navigate(`/contacten/bewerk/${persoon.persoonId}`)}
+                    onClick={() => navigate(`/contacten/bewerk/${persoon.id}`)}
                   >
                     Bewerk
                   </Button>
