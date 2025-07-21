@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { DossierKind, AddKindData } from '../types/api.types'
 import { kinderenService } from '../services/kinderen.service'
 import { notifications } from '@mantine/notifications'
@@ -8,13 +8,7 @@ export function useDossierKinderen(dossierId?: string) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (dossierId) {
-      loadKinderen()
-    }
-  }, [dossierId])
-
-  const loadKinderen = async () => {
+  const loadKinderen = useCallback(async () => {
     if (!dossierId) return
 
     try {
@@ -32,7 +26,13 @@ export function useDossierKinderen(dossierId?: string) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [dossierId])
+
+  useEffect(() => {
+    if (dossierId) {
+      loadKinderen()
+    }
+  }, [dossierId, loadKinderen])
 
   const addKind = async (data: AddKindData) => {
     if (!dossierId) return

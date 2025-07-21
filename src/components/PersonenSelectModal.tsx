@@ -33,7 +33,6 @@ export function PersonenSelectModal({
   title = 'Selecteer een persoon'
 }: PersonenSelectModalProps) {
   const [personen, setPersonen] = useState<Persoon[]>([])
-  const [filteredPersonen, setFilteredPersonen] = useState<Persoon[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -44,19 +43,13 @@ export function PersonenSelectModal({
     }
   }, [opened])
 
-  useEffect(() => {
-    filterPersonen()
-  }, [personen, searchQuery, excludeIds])
-
   const loadPersonen = async () => {
     try {
       setLoading(true)
       setError(null)
       const data = await persoonService.getPersonen()
-      console.log('Loaded personen:', data)
       setPersonen(data)
     } catch (err) {
-      console.error('Error loading personen:', err)
       setError('Kon personen niet laden')
       setPersonen([])
     } finally {
@@ -64,25 +57,19 @@ export function PersonenSelectModal({
     }
   }
 
-  const filterPersonen = () => {
-    console.log('Filtering personen. Total:', personen.length, 'ExcludeIds:', excludeIds)
-    let filtered = personen.filter(p => !excludeIds.includes(p.persoonId))
-    console.log('After exclude filter:', filtered.length)
-    
-    if (searchQuery) {
-      filtered = filtered.filter(persoon => {
-        const volledigeNaam = [
-          persoon.voornamen,
-          persoon.tussenvoegsel,
-          persoon.achternaam
-        ].filter(Boolean).join(' ').toLowerCase()
-        
-        return volledigeNaam.includes(searchQuery.toLowerCase())
-      })
-    }
-    
-    console.log('Final filtered:', filtered.length)
-    setFilteredPersonen(filtered)
+  // Filter personen direct in render zonder useEffect
+  let filteredPersonen = personen.filter(p => !excludeIds.includes(p.persoonId))
+  
+  if (searchQuery) {
+    filteredPersonen = filteredPersonen.filter(persoon => {
+      const volledigeNaam = [
+        persoon.voornamen,
+        persoon.tussenvoegsel,
+        persoon.achternaam
+      ].filter(Boolean).join(' ').toLowerCase()
+      
+      return volledigeNaam.includes(searchQuery.toLowerCase())
+    })
   }
 
 

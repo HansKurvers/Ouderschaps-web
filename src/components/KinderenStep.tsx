@@ -28,9 +28,7 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
 
   const handleSelectKind = async (persoon: Persoon) => {
     try {
-      console.log('Selected persoon:', persoon)
       const kindId = persoon.persoonId || persoon.id || persoon._id
-      console.log('Using kindId:', kindId)
       
       const data: AddKindData = {
         kindId: String(kindId),
@@ -45,9 +43,7 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
 
   const handleCreateKind = async (persoon: Persoon) => {
     try {
-      console.log('Created persoon:', persoon)
       const kindId = persoon.persoonId || persoon.id || persoon._id
-      console.log('Using kindId:', kindId)
       
       const data: AddKindData = {
         kindId: String(kindId),
