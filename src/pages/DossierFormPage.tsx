@@ -21,6 +21,7 @@ import { PersonenSelectModal } from '../components/PersonenSelectModal'
 import { ContactFormModal } from '../components/ContactFormModal'
 import { DossierNumberStep } from '../components/DossierNumberStep'
 import { PartijSelectStep } from '../components/PartijSelectStep'
+import { KinderenStep } from '../components/KinderenStep'
 import { DossierOverviewStep } from '../components/DossierOverviewStep'
 import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
@@ -180,7 +181,9 @@ export function DossierFormPage() {
       case 1:
         return partij1.persoon !== null && partij2.persoon !== null
       case 2:
-        return true
+        return true // Kinderen step - always allow proceeding
+      case 3:
+        return true // Overview step
       default:
         return true
     }
@@ -240,7 +243,7 @@ export function DossierFormPage() {
   }
 
   const nextStep = () => {
-    setActive((current) => current < 3 ? current + 1 : current)
+    setActive((current) => current < 4 ? current + 1 : current)
   }
   
   const prevStep = () => {
@@ -281,8 +284,13 @@ export function DossierFormPage() {
         />
         <Stepper.Step 
           label="Stap 3" 
-          description="Controle & Overzicht"
+          description="Kinderen toevoegen"
           allowStepSelect={canProceed(2)}
+        />
+        <Stepper.Step 
+          label="Stap 4" 
+          description="Controle & Overzicht"
+          allowStepSelect={canProceed(3)}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -313,6 +321,15 @@ export function DossierFormPage() {
         )}
 
         {active === 2 && (
+          <KinderenStep
+            dossierId={dossierId}
+            partijen={[partij1, partij2]}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
+
+        {active === 3 && (
           <DossierOverviewStep
             dossierNummer={form.values.dossierNummer}
             partij1={partij1}
@@ -331,7 +348,7 @@ export function DossierFormPage() {
             Vorige
           </Button>
           
-          {active === 2 ? (
+          {active === 3 ? (
             <Button onClick={handleSubmit} loading={loading}>
               {isEdit ? 'Opslaan' : 'Dossier Aanmaken'}
             </Button>

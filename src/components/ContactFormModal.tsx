@@ -14,6 +14,7 @@ interface ContactFormModalProps {
   onSuccess: (persoon: Persoon) => void
   rolId?: string
   title?: string
+  isKind?: boolean
 }
 
 export function ContactFormModal({ 
@@ -21,7 +22,8 @@ export function ContactFormModal({
   onClose, 
   onSuccess,
   rolId,
-  title = 'Nieuw contact toevoegen'
+  title = 'Nieuw contact toevoegen',
+  isKind = false
 }: ContactFormModalProps) {
   const [rollen, setRollen] = useState<Rol[]>([])
   const [loading, setLoading] = useState(true)
@@ -141,7 +143,8 @@ export function ContactFormModal({
           isEdit={false}
           submitting={submitting}
           onCancel={onClose}
-          hideRolField={!!rolId}
+          hideRolField={!!rolId || isKind}
+          isKind={isKind}
         />
       )}
     </Modal>

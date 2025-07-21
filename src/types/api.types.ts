@@ -72,3 +72,30 @@ export interface PaginatedResponse<T> {
   data: T[]
   paginering: Pagination
 }
+
+export interface RelatieType {
+  id: number
+  naam: string
+}
+
+export interface OuderRelatie {
+  ouderId: string
+  relatieTypeId: string
+  relatieType?: RelatieType
+  ouder?: Persoon
+}
+
+export interface DossierKind {
+  _id: string
+  dossierKindId: string
+  dossierId: string
+  kindId: string
+  kind?: Persoon
+  ouderRelaties?: OuderRelatie[]
+}
+
+export interface AddKindData {
+  kindId?: string
+  kindData?: Partial<Persoon>
+  ouderRelaties: OuderRelatie[]
+}

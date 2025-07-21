@@ -1,0 +1,11 @@
+{
+  "routes": [
+    {
+      "route": "/*",
+      "headers": {
+        "cache-control": "no-cache"
+      },
+      "rewrite": "index.html"
+    }
+  ]
+}

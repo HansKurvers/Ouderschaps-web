@@ -34,6 +34,7 @@ interface ContactFormProps {
   submitting?: boolean
   onCancel?: () => void
   hideRolField?: boolean
+  isKind?: boolean
 }
 
 export function ContactForm({ 
@@ -43,7 +44,8 @@ export function ContactForm({
   isEdit = false, 
   submitting = false,
   onCancel,
-  hideRolField = false
+  hideRolField = false,
+  isKind = false
 }: ContactFormProps) {
   
   const handleSubmit = form.onSubmit(async (values) => {
@@ -104,50 +106,54 @@ export function ContactForm({
           </Grid.Col>
         </Grid>
 
-        <Divider label="Contactgegevens" />
+        {!isKind && (
+          <>
+            <Divider label="Contactgegevens" />
 
-        <Grid>
-          <Grid.Col span={6}>
-            <TextInput
-              label="E-mailadres"
-              placeholder="j.janssen@email.com"
-              type="email"
-              {...form.getInputProps('email')}
-            />
-          </Grid.Col>
-          <Grid.Col span={6}>
-            <TextInput
-              label="Telefoonnummer"
-              placeholder="06-12345678"
-              {...form.getInputProps('telefoon')}
-            />
-          </Grid.Col>
-        </Grid>
+            <Grid>
+              <Grid.Col span={6}>
+                <TextInput
+                  label="E-mailadres"
+                  placeholder="j.janssen@email.com"
+                  type="email"
+                  {...form.getInputProps('email')}
+                />
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Telefoonnummer"
+                  placeholder="06-12345678"
+                  {...form.getInputProps('telefoon')}
+                />
+              </Grid.Col>
+            </Grid>
 
-        <Divider label="Adresgegevens" />
+            <Divider label="Adresgegevens" />
 
-        <TextInput
-          label="Adres"
-          placeholder="Hoofdstraat 123"
-          {...form.getInputProps('adres')}
-        />
+            <TextInput
+              label="Adres"
+              placeholder="Hoofdstraat 123"
+              {...form.getInputProps('adres')}
+            />
 
-        <Grid>
-          <Grid.Col span={4}>
-            <TextInput
-              label="Postcode"
-              placeholder="1234 AB"
-              {...form.getInputProps('postcode')}
-            />
-          </Grid.Col>
-          <Grid.Col span={8}>
-            <TextInput
-              label="Plaats"
-              placeholder="Amsterdam"
-              {...form.getInputProps('plaats')}
-            />
-          </Grid.Col>
-        </Grid>
+            <Grid>
+              <Grid.Col span={4}>
+                <TextInput
+                  label="Postcode"
+                  placeholder="1234 AB"
+                  {...form.getInputProps('postcode')}
+                />
+              </Grid.Col>
+              <Grid.Col span={8}>
+                <TextInput
+                  label="Plaats"
+                  placeholder="Amsterdam"
+                  {...form.getInputProps('plaats')}
+                />
+              </Grid.Col>
+            </Grid>
+          </>
+        )}
 
         {!hideRolField && (
           <>
