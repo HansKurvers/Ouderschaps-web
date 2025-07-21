@@ -477,7 +477,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
               ))}
               <th style={{ padding: '12px' }}>
                 <Group gap="xs">
-                  <Text size="sm">Wisseltijd</Text>
+                  <Text size="sm">Wisselmoment</Text>
                   <Tooltip label="Tijdstip waarop het kind wordt overgedragen tussen de partijen (bijv. 18:00)">
                     <IconInfoCircle size={14} style={{ opacity: 0.5 }} />
                   </Tooltip>
@@ -491,13 +491,13 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
               
               return (
                 <tr key={dag.id}>
-                  <td><strong>{dag.naam}</strong></td>
+                  <td style={{ padding: '10px' }}><strong>{dag.naam}</strong></td>
                   {dagdelen?.map(dagdeel => {
                     const key = `${dag.id}-${dagdeel.id}`
                     const cellData = tabel.omgangData[key] || { verzorgerId: null, wisselTijd: null }
                     
                     return (
-                      <td key={dagdeel.id}>
+                      <td key={dagdeel.id} style={{ padding: '8px' }}>
                         {cellData.verzorgerId ? (
                           <Badge 
                             color={getPartijColor(cellData.verzorgerId)} 
@@ -548,9 +548,9 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
                       </td>
                     )
                   })}
-                  <td>
+                  <td style={{ padding: '3px' }}>
                     <TextInput
-                      placeholder="Wisseltijd"
+                      placeholder="Wisselmoment"
                       value={dagWisselTijd}
                       onChange={(event) => {
                         const newValue = event.currentTarget.value
@@ -615,7 +615,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         </Group>
       </Stack>
       
-      <Stack gap="lg">
+      <Stack gap="xl">
         {weekTabellen.map((tabel) => renderWeekTabel(tabel))}
         
         <Group justify="center">
