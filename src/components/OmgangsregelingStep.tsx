@@ -59,12 +59,19 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
         omgangService.getDagdelen(),
         omgangService.getWeekRegelingen()
       ])
-      setDagen(dagenData)
-      setDagdelen(dagdelenData)
-      setWeekRegelingen(weekRegelingenData)
+      console.log('API responses:', { dagenData, dagdelenData, weekRegelingenData })
+      const dagenArray = dagenData?.data || []
+      const dagdelenArray = dagdelenData?.data || []
+      const weekRegelingenArray = weekRegelingenData?.data || []
       
-      if (!dossierId) {
-        addWeekTabel()
+      setDagen(dagenArray)
+      setDagdelen(dagdelenArray)
+      setWeekRegelingen(weekRegelingenArray)
+      
+      if (!dossierId && dagenArray.length > 0 && dagdelenArray.length > 0) {
+        // Create empty week tabel after data is loaded
+        const emptyTabel = createEmptyWeekTabelWithData(dagenArray, dagdelenArray)
+        setWeekTabellen([emptyTabel])
       }
       
       setLoading(false)
@@ -111,6 +118,22 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     }
   }
 
+  const createEmptyWeekTabelWithData = (dagenList: Dag[], dagdelenList: Dagdeel[]): WeekTabelData => {
+    const emptyData: Record<string, OmgangCell> = {}
+    dagenList.forEach(dag => {
+      dagdelenList.forEach(dagdeel => {
+        const key = `${dag.id}-${dagdeel.id}`
+        emptyData[key] = { verzorgerId: null, wisselTijd: null }
+      })
+    })
+    
+    return {
+      id: Math.random().toString(36).substring(2, 9),
+      weekRegelingId: null,
+      omgangData: emptyData
+    }
+  }
+
   const createEmptyWeekTabel = (): WeekTabelData => {
     const emptyData: Record<string, OmgangCell> = {}
     if (dagen && dagen.length > 0 && dagdelen && dagdelen.length > 0) {
@@ -123,7 +146,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
     }
     
     return {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 9),
       weekRegelingId: null,
       omgangData: emptyData
     }
@@ -174,23 +197,29 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
 
   const getPartijOptions = () => {
     const options = []
-    if (partij1?.persoon) {
+    console.log('Partij1:', partij1)
+    console.log('Partij2:', partij2)
+    
+    if (partij1?.persoon && partij1.persoon.persoonId) {
       options.push({
-        value: partij1.persoon.persoonId,
+        value: partij1.persoon.persoonId.toString(),
         label: getVolledigeNaam(partij1.persoon)
       })
     }
-    if (partij2?.persoon) {
+    if (partij2?.persoon && partij2.persoon.persoonId) {
       options.push({
-        value: partij2.persoon.persoonId,
+        value: partij2.persoon.persoonId.toString(),
         label: getVolledigeNaam(partij2.persoon)
       })
     }
+    console.log('Partij options:', options)
     return options
   }
 
   const renderWeekTabel = (tabel: WeekTabelData) => {
-    const selectedWeekRegeling = weekRegelingen?.find(wr => wr.id === tabel.weekRegelingId)
+    const selectedWeekRegeling = Array.isArray(weekRegelingen) 
+      ? weekRegelingen.find(wr => wr.id === tabel.weekRegelingId)
+      : undefined
     
     return (
       <Card key={tabel.id} shadow="sm" p="lg" radius="md" withBorder>
@@ -244,7 +273,7 @@ export function OmgangsregelingStep({ dossierId, partij1, partij2 }: Omgangsrege
                         <Select
                           placeholder="Verzorger"
                           data={getPartijOptions()}
-                          value={cellData.verzorgerId || ''}
+                          value={cellData.verzorgerId || undefined}
                           onChange={(value) => updateOmgangCell(
                             tabel.id,
                             dag.id,

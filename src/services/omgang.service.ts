@@ -67,7 +67,7 @@ class OmgangService {
     }
   }
 
-  async getDagen(): Promise<Dag[]> {
+  async getDagen(): Promise<any> {
     const response = await fetch(`${API_URL}/api/lookups/dagen`, {
       headers: this.getHeaders()
     })
@@ -79,7 +79,7 @@ class OmgangService {
     return response.json()
   }
 
-  async getDagdelen(): Promise<Dagdeel[]> {
+  async getDagdelen(): Promise<any> {
     const response = await fetch(`${API_URL}/api/lookups/dagdelen`, {
       headers: this.getHeaders()
     })
@@ -91,7 +91,7 @@ class OmgangService {
     return response.json()
   }
 
-  async getWeekRegelingen(): Promise<WeekRegeling[]> {
+  async getWeekRegelingen(): Promise<any> {
     const response = await fetch(`${API_URL}/api/lookups/week-regelingen`, {
       headers: this.getHeaders()
     })
