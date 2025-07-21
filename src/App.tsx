@@ -11,8 +11,51 @@ import { ContactenOverzichtPage } from './pages/ContactenOverzichtPage'
 import { ContactFormPage } from './pages/ContactFormPage'
 
 const theme = createTheme({
-  primaryColor: 'blue',
+  colors: {
+    brand: [
+      '#E8F4FB',
+      '#C5E5F4',
+      '#9FD4ED',
+      '#79C3E6',
+      '#58B3E5',
+      '#3FA3DB',
+      '#3492CA',
+      '#2D7FB3',
+      '#256B9C',
+      '#1E5785'
+    ]
+  },
+  primaryColor: 'brand',
+  primaryShade: 4,
   fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+  defaultRadius: 'md',
+  components: {
+    Button: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Card: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Modal: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    Select: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+    TextInput: {
+      defaultProps: {
+        radius: 'md',
+      },
+    },
+  },
 })
 
 function App() {

@@ -3,8 +3,8 @@ import { IconUserPlus } from '@tabler/icons-react'
 import { Persoon, Rol } from '../types/api.types'
 
 const PARTIJ_COLORS = {
-  partij1: '#58b3e5',
-  partij2: '#ff9f40'
+  partij1: 'brand.4',
+  partij2: 'orange.5'
 }
 
 interface PartijCardProps {

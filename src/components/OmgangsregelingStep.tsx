@@ -41,8 +41,8 @@ interface OmgangsregelingStepProps {
 }
 
 const PARTIJ_COLORS = {
-  partij1: '#58b3e5',
-  partij2: '#ff9f40'
+  partij1: 'brand.4',
+  partij2: 'orange.5'
 }
 
 export interface OmgangsregelingStepHandle {
