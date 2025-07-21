@@ -14,8 +14,14 @@ export const kinderenService = {
       throw new Error('Failed to fetch kinderen')
     }
 
-    const data: ApiResponse<DossierKind[]> = await response.json()
-    return data.data || []
+    const result = await response.json()
+    // Handle both possible response formats
+    if (result.success && result.data) {
+      return result.data
+    } else if (Array.isArray(result)) {
+      return result
+    }
+    return []
   },
 
   async addKindToDossier(dossierId: string, data: AddKindData): Promise<DossierKind> {

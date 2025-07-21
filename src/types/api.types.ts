@@ -86,12 +86,12 @@ export interface OuderRelatie {
 }
 
 export interface DossierKind {
-  _id: string
-  dossierKindId: string
-  dossierId: string
-  kindId: string
-  kind?: Persoon
-  ouderRelaties?: OuderRelatie[]
+  id: number  // Dit is het dossiers_kinderen.id
+  kind: Persoon
+  ouders: Array<{
+    ouder: Persoon
+    relatieType: RelatieType
+  }>
 }
 
 export interface AddKindData {

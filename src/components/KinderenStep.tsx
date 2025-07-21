@@ -68,14 +68,16 @@ export function KinderenStep({ dossierId, onNext, onBack }: KinderenStepProps) {
 
 
       <Grid>
-        {kinderen.map((kind) => (
-          <Grid.Col key={kind.dossierKindId} span={{ base: 12, md: 6 }}>
-            <KindCard
-              dossierKind={kind}
-              onRemove={() => removeKind(kind.dossierKindId)}
-            />
-          </Grid.Col>
-        ))}
+        {kinderen.map((kind) => {
+          return (
+            <Grid.Col key={kind.id} span={{ base: 12, md: 6 }}>
+              <KindCard
+                dossierKind={kind}
+                onRemove={() => removeKind(String(kind.id))}
+              />
+            </Grid.Col>
+          )
+        })}
         
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card withBorder p="xl" style={{ border: '2px dashed var(--mantine-color-gray-4)' }}>
