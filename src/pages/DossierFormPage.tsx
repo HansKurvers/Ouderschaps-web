@@ -23,6 +23,7 @@ import { DossierNumberStep } from '../components/DossierNumberStep'
 import { PartijSelectStep } from '../components/PartijSelectStep'
 import { KinderenStep } from '../components/KinderenStep'
 import { DossierOverviewStep } from '../components/DossierOverviewStep'
+import { OmgangsregelingStep } from '../components/OmgangsregelingStep'
 import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
 import { submitDossier } from '../utils/dossierSubmit'
@@ -188,6 +189,8 @@ export function DossierFormPage() {
       case 2:
         return true // Kinderen step - always allow proceeding
       case 3:
+        return true // Omgangsregeling step
+      case 4:
         return true // Overview step
       default:
         return true
@@ -289,7 +292,7 @@ export function DossierFormPage() {
         setLoading(false)
       }
     } else {
-      setActive((current) => current < 4 ? current + 1 : current)
+      setActive((current) => current < 5 ? current + 1 : current)
     }
   }
   
@@ -336,8 +339,13 @@ export function DossierFormPage() {
         />
         <Stepper.Step 
           label="Stap 4" 
-          description="Controle & Overzicht"
+          description="Omgangsregeling"
           allowStepSelect={canProceed(3)}
+        />
+        <Stepper.Step 
+          label="Stap 5" 
+          description="Controle & Overzicht"
+          allowStepSelect={canProceed(4)}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -377,6 +385,14 @@ export function DossierFormPage() {
         )}
 
         {active === 3 && (
+          <OmgangsregelingStep
+            dossierId={dossierId}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+
+        {active === 4 && (
           <DossierOverviewStep
             dossierNummer={form.values.dossierNummer}
             partij1={partij1}
@@ -396,7 +412,7 @@ export function DossierFormPage() {
             Vorige
           </Button>
           
-          {active === 3 ? (
+          {active === 4 ? (
             <Button onClick={handleSubmit} loading={loading}>
               {isEdit ? 'Opslaan' : 'Dossier Aanmaken'}
             </Button>

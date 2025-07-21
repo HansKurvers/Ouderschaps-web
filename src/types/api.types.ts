@@ -99,3 +99,33 @@ export interface AddKindData {
   kindData?: Partial<Persoon>
   ouderRelaties: OuderRelatie[]
 }
+
+export interface Omgang {
+  id?: number
+  dagId: number
+  dagdeelId: number
+  verzorgerId: string
+  wisselTijd?: string
+  weekRegelingId: number
+  weekRegelingAnders?: string
+  dossierId: string
+  dag?: Dag
+  dagdeel?: Dagdeel
+  verzorger?: Persoon
+  weekRegeling?: WeekRegeling
+}
+
+export interface Dag {
+  id: number
+  naam: string
+}
+
+export interface Dagdeel {
+  id: number
+  naam: string
+}
+
+export interface WeekRegeling {
+  id: number
+  omschrijving: string
+}
