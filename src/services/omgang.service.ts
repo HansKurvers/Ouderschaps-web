@@ -12,7 +12,7 @@ class OmgangService {
   }
   //TODO update when auth is implemented
 
-  async getOmgangByDossier(dossierId: string): Promise<Omgang[]> {
+  async getOmgangByDossier(dossierId: string): Promise<any> {
     const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang`, {
       headers: this.getHeaders()
     })

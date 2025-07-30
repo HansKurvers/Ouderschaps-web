@@ -18,11 +18,10 @@ import {
 import { IconPlus, IconTrash, IconInfoCircle } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { omgangService } from '../services/omgang.service'
-import { Dag, Dagdeel, WeekRegeling, Persoon } from '../types/api.types'
+import { Dag, Dagdeel, WeekRegeling, Persoon, Omgang } from '../types/api.types'
 
 interface OmgangCell {
   verzorgerId: string | null
-  wisselTijd: string | null
 }
 
 interface WeekTabelData {
@@ -68,6 +67,9 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
   useEffect(() => {
     if (dossierId && dagen.length > 0 && dagdelen.length > 0) {
       loadExistingOmgang()
+    } else if (!dossierId && dagen.length > 0 && dagdelen.length > 0 && weekTabellen.length === 0) {
+      // If no dossierId, ensure we have at least one empty table
+      setWeekTabellen([createEmptyWeekTabel()])
     }
   }, [dossierId, dagen.length, dagdelen.length])
 
@@ -92,12 +94,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
       setDagdelen(dagdelenArray)
       setWeekRegelingen(weekRegelingenArray)
       
-      if (!dossierId && dagenArray.length > 0 && dagdelenArray.length > 0) {
-        // Create empty week tabel after data is loaded
-        const emptyTabel = createEmptyWeekTabelWithData(dagenArray, dagdelenArray)
-        setWeekTabellen([emptyTabel])
-      }
-      
       setLoading(false)
     } catch (error) {
       notifications.show({
@@ -114,8 +110,13 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     try {
       const response = await omgangService.getOmgangByDossier(dossierId)
       
-      // Handle API response structure
-      const omgangData = response?.data || response || []
+      // Handle the response structure - it returns {success: true, data: Array}
+      let omgangData: Omgang[] = []
+      if (response && typeof response === 'object' && 'data' in response) {
+        omgangData = response.data
+      } else if (Array.isArray(response)) {
+        omgangData = response
+      }
       
       if (!Array.isArray(omgangData) || omgangData.length === 0) {
         // No existing data, create empty table
@@ -130,6 +131,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         const dagdeelId = omgang.dagdeel?.id || omgang.dagdeelId
         const verzorgerId = omgang.verzorger?.id || omgang.verzorger?.persoonId || omgang.verzorgerId
         
+        
         if (!acc[weekId]) {
           acc[weekId] = {
             omgangData: {},
@@ -139,12 +141,12 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         
         const key = `${dagId}-${dagdeelId}`
         acc[weekId].omgangData[key] = {
-          verzorgerId: verzorgerId?.toString() || null,
-          wisselTijd: omgang.wisselTijd || null
+          verzorgerId: verzorgerId?.toString() || null
         }
         
-        // Store wisseltijd per day
-        if (omgang.wisselTijd) {
+        // Store wisseltijd per day only if it hasn't been set yet
+        // This preserves the first wisseltijd found for each day
+        if (omgang.wisselTijd && !acc[weekId].wisselTijden[dagId]) {
           acc[weekId].wisselTijden[dagId] = omgang.wisselTijd
         }
         
@@ -152,14 +154,43 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
       }, {} as Record<number, { omgangData: Record<string, OmgangCell>, wisselTijden: Record<number, string> }>)
       
       // Create tables from grouped data
-      const tabellen = Object.entries(groupedByWeek).map(([weekId, data]) => ({
-        id: Math.random().toString(36).substring(2, 9),
-        weekRegelingId: parseInt(weekId),
-        omgangData: data.omgangData,
-        wisselTijden: data.wisselTijden
-      }))
+      const tabellen = Object.entries(groupedByWeek).map(([weekId, groupData]) => {
+        // If dagen and dagdelen are available, create a complete grid
+        const completeOmgangData: Record<string, OmgangCell> = {}
+        
+        if (dagen.length > 0 && dagdelen.length > 0) {
+          // Initialize all cells with null values
+          dagen.forEach(dag => {
+            dagdelen.forEach(dagdeel => {
+              const key = `${dag.id}-${dagdeel.id}`
+              completeOmgangData[key] = { verzorgerId: null }
+            })
+          })
+          
+          // Override with actual data from the database
+          Object.entries(groupData.omgangData).forEach(([key, cellData]) => {
+            completeOmgangData[key] = cellData
+          })
+        } else {
+          // If reference data not loaded yet, just use the data as-is
+          Object.assign(completeOmgangData, groupData.omgangData)
+        }
+        
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          weekRegelingId: parseInt(weekId),
+          omgangData: completeOmgangData,
+          wisselTijden: groupData.wisselTijden
+        }
+      })
       
-      setWeekTabellen(tabellen)
+      
+      // If no tables were created (shouldn't happen if we have data), create an empty one
+      if (tabellen.length === 0) {
+        setWeekTabellen([createEmptyWeekTabel()])
+      } else {
+        setWeekTabellen(tabellen)
+      }
     } catch (error) {
       console.error('Error loading existing omgang:', error)
       // On error, create empty table
@@ -167,25 +198,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     }
   }
 
-  const createEmptyWeekTabelWithData = (dagenList: Dag[], dagdelenList: Dagdeel[]): WeekTabelData => {
-    const emptyData: Record<string, OmgangCell> = {}
-    const wisselTijden: Record<number, string> = {}
-    
-    dagenList.forEach(dag => {
-      wisselTijden[dag.id] = ''
-      dagdelenList.forEach(dagdeel => {
-        const key = `${dag.id}-${dagdeel.id}`
-        emptyData[key] = { verzorgerId: null, wisselTijd: null }
-      })
-    })
-    
-    return {
-      id: Math.random().toString(36).substring(2, 9),
-      weekRegelingId: null,
-      omgangData: emptyData,
-      wisselTijden
-    }
-  }
 
   const createEmptyWeekTabel = (): WeekTabelData => {
     const emptyData: Record<string, OmgangCell> = {}
@@ -196,7 +208,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         wisselTijden[dag.id] = ''
         dagdelen.forEach(dagdeel => {
           const key = `${dag.id}-${dagdeel.id}`
-          emptyData[key] = { verzorgerId: null, wisselTijd: null }
+          emptyData[key] = { verzorgerId: null }
         })
       })
     }
@@ -235,8 +247,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     tabelId: string,
     dagId: number,
     dagdeelId: number,
-    verzorgerId: string | null,
-    wisselTijd: string | null
+    verzorgerId: string | null
   ) => {
     const key = `${dagId}-${dagdeelId}`
     setWeekTabellen(weekTabellen.map(tabel => 
@@ -245,7 +256,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
             ...tabel,
             omgangData: {
               ...tabel.omgangData,
-              [key]: { verzorgerId, wisselTijd }
+              [key]: { verzorgerId }
             }
           }
         : tabel
@@ -261,16 +272,55 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     
     if (!partij1Id || !partij2Id || !dagen || !dagdelen) return
     
-    let dayCount = 0
-    const updatedOmgangData: Record<string, OmgangCell> = {}
+    // Find the current tabel to preserve existing dagdeel assignments
+    const currentTabel = weekTabellen.find(t => t.id === tabelId)
+    if (!currentTabel) return
     
-    // Simple allocation: first dagen1 days go to partij1, rest to partij2
+    let dayCount = 0
+    const updatedOmgangData: Record<string, OmgangCell> = { ...currentTabel.omgangData }
+    
+    // Apply preset logic: for each day, check if it already has assignments
+    // If a day has mixed assignments (different parties for different dagdelen), 
+    // we'll update all dagdelen to match the preset
+    // If a day is completely empty, assign all dagdelen according to preset
     dagen.forEach(dag => {
-      const verzorgerId = dayCount < dagen1 ? partij1Id : partij2Id
-      dagdelen.forEach(dagdeel => {
+      const defaultVerzorgerId = dayCount < dagen1 ? partij1Id : partij2Id
+      
+      // Check if this day has any existing assignments
+      const dayHasAssignments = dagdelen.some(dagdeel => {
         const key = `${dag.id}-${dagdeel.id}`
-        updatedOmgangData[key] = { verzorgerId, wisselTijd: null }
+        return updatedOmgangData[key]?.verzorgerId !== null
       })
+      
+      // If day has assignments, check if they're all the same party
+      let currentDayVerzorgerId: string | null = null
+      let dayHasMixedAssignments = false
+      
+      if (dayHasAssignments) {
+        const verzorgerIds = dagdelen.map(dagdeel => {
+          const key = `${dag.id}-${dagdeel.id}`
+          return updatedOmgangData[key]?.verzorgerId
+        }).filter(id => id !== null)
+        
+        if (verzorgerIds.length > 0) {
+          currentDayVerzorgerId = verzorgerIds[0]
+          dayHasMixedAssignments = verzorgerIds.some(id => id !== currentDayVerzorgerId)
+        }
+      }
+      
+      // Only update if:
+      // 1. Day has no assignments, OR
+      // 2. Day has mixed assignments (different parties for different dagdelen), OR
+      // 3. All assignments for the day are different from what the preset suggests
+      if (!dayHasAssignments || dayHasMixedAssignments || currentDayVerzorgerId !== defaultVerzorgerId) {
+        dagdelen.forEach(dagdeel => {
+          const key = `${dag.id}-${dagdeel.id}`
+          updatedOmgangData[key] = { 
+            verzorgerId: defaultVerzorgerId
+          }
+        })
+      }
+      
       dayCount++
     })
     
@@ -279,7 +329,8 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         ? {
             ...tabel,
             omgangData: updatedOmgangData,
-            wisselTijden: {} // Clear wisseltijden for presets
+            // Preserve existing wisselTijden instead of clearing them
+            wisselTijden: { ...tabel.wisselTijden }
           }
         : tabel
     ))
@@ -335,7 +386,17 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
 
     try {
       // Delete existing omgang data first
-      const existingData = await omgangService.getOmgangByDossier(dossierId)
+      const response = await omgangService.getOmgangByDossier(dossierId)
+      
+      // Handle response structure
+      let existingData: Omgang[] = []
+      if (response && typeof response === 'object' && 'data' in response) {
+        existingData = response.data
+      } else if (Array.isArray(response)) {
+        existingData = response
+      }
+      
+      
       if (Array.isArray(existingData)) {
         for (const omgang of existingData) {
           if (omgang.id) {
@@ -349,13 +410,15 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         for (const [key, cellData] of Object.entries(tabel.omgangData)) {
           if (cellData.verzorgerId) {
             const [dagId, dagdeelId] = key.split('-').map(Number)
-            const wisselTijd = tabel.wisselTijden?.[dagId] || undefined
+            
+            // Use day-level wisseltijd
+            const wisselTijd = tabel.wisselTijden?.[dagId] || ''
             
             const omgangData = {
               dagId: dagId,
               dagdeelId: dagdeelId,
               verzorgerId: parseInt(cellData.verzorgerId),
-              wisselTijd: wisselTijd || '',
+              wisselTijd: wisselTijd,
               weekRegelingId: tabel.weekRegelingId || 1,
               weekRegelingAnders: ''
             }
@@ -380,10 +443,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
   }
 
   const renderWeekTabel = (tabel: WeekTabelData) => {
-    const selectedWeekRegeling = Array.isArray(weekRegelingen) 
-      ? weekRegelingen.find(wr => wr.id === tabel.weekRegelingId)
-      : undefined
-    
     return (
       <Card key={tabel.id} shadow="sm" p="lg" radius="md" withBorder>
         <Group justify="space-between" mb="md">
@@ -484,7 +543,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
                   <td style={{ padding: '10px' }}><strong>{dag.naam}</strong></td>
                   {dagdelen?.map(dagdeel => {
                     const key = `${dag.id}-${dagdeel.id}`
-                    const cellData = tabel.omgangData[key] || { verzorgerId: null, wisselTijd: null }
+                    const cellData = tabel.omgangData[key] || { verzorgerId: null }
                     
                     return (
                       <td key={dagdeel.id} style={{ padding: '8px' }}>
@@ -501,8 +560,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
                               tabel.id,
                               dag.id,
                               dagdeel.id,
-                              null,
-                              cellData.wisselTijd
+                              null
                             )}
                           >
                             {(() => {
@@ -528,8 +586,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
                               tabel.id,
                               dag.id,
                               dagdeel.id,
-                              value || null,
-                              cellData.wisselTijd
+                              value || null
                             )}
                             size="xs"
                             disabled={!tabel.weekRegelingId}
