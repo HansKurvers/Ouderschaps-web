@@ -25,6 +25,7 @@ import { PartijSelectStep } from '../components/PartijSelectStep'
 import { KinderenStep } from '../components/KinderenStep'
 import { DossierOverviewStep } from '../components/DossierOverviewStep'
 import { OmgangsregelingStep, OmgangsregelingStepHandle } from '../components/OmgangsregelingStep'
+import { VakantiesStep, VakantiesStepHandle } from '../components/VakantiesStep'
 import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
 import { submitDossier } from '../utils/dossierSubmit'
@@ -54,6 +55,7 @@ export function DossierFormPage() {
   const [newContactPartij, setNewContactPartij] = useState<1 | 2 | null>(null)
   
   const omgangsregelingRef = useRef<OmgangsregelingStepHandle>(null)
+  const vakantiesRef = useRef<VakantiesStepHandle>(null)
   
   const {
     partij1,
@@ -193,6 +195,8 @@ export function DossierFormPage() {
       case 3:
         return true // Omgangsregeling step
       case 4:
+        return true // Vakanties step
+      case 5:
         return true // Overview step
       default:
         return true
@@ -326,7 +330,25 @@ export function DossierFormPage() {
         }
       }
       
-      setActive((current) => current < 5 ? current + 1 : current)
+      // Save vakantie data when moving from step 4 to 5
+      if (active === 4 && dossierId && vakantiesRef.current) {
+        try {
+          setLoading(true)
+          await vakantiesRef.current.saveData()
+        } catch (error) {
+          console.error('Error saving vakantie data:', error)
+          notifications.show({
+            title: 'Fout',
+            message: 'Kon vakantieregelingen niet opslaan',
+            color: 'red'
+          })
+          return
+        } finally {
+          setLoading(false)
+        }
+      }
+      
+      setActive((current) => current < 6 ? current + 1 : current)
     }
   }
   
@@ -378,8 +400,13 @@ export function DossierFormPage() {
         />
         <Stepper.Step 
           label="Stap 5" 
-          description="Controle & Overzicht"
+          description="Vakantieregelingen"
           allowStepSelect={canProceed(4)}
+        />
+        <Stepper.Step 
+          label="Stap 6" 
+          description="Controle & Overzicht"
+          allowStepSelect={canProceed(5)}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -428,6 +455,16 @@ export function DossierFormPage() {
         )}
 
         {active === 4 && (
+          <VakantiesStep
+            ref={vakantiesRef}
+            dossierId={dossierId}
+            kinderen={kinderen}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+
+        {active === 5 && (
           <DossierOverviewStep
             dossierNummer={form.values.dossierNummer}
             partij1={partij1}
@@ -447,7 +484,7 @@ export function DossierFormPage() {
             Vorige
           </Button>
           
-          {active === 4 ? (
+          {active === 5 ? (
             <Button onClick={handleSubmit} loading={loading}>
               {isEdit ? 'Opslaan' : 'Dossier Aanmaken'}
             </Button>
