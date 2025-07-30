@@ -7,7 +7,6 @@ import {
   Card,
   Text,
   Group,
-  Badge,
   Loader
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
@@ -91,29 +90,70 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         }
         
         const vakantiesData = await vakantiesResponse.json()
-        const vakantiesArray = vakantiesData?.data || vakantiesData || []
+        let vakantiesArray = vakantiesData?.data || vakantiesData || []
+        
+        // Ensure we have a valid array
+        if (!Array.isArray(vakantiesArray)) {
+          vakantiesArray = []
+        }
+        
+        // Filter out any invalid entries
+        vakantiesArray = vakantiesArray.filter((vakantie: any) => 
+          vakantie && 
+          typeof vakantie === 'object' && 
+          vakantie.id && 
+          vakantie.naam
+        )
+        
         setVakanties(vakantiesArray)
 
         // Load regeling templates with appropriate filters
-        const templateParams = new URLSearchParams({
-          type: 'Vakantie',
-          meervoudKinderen: hasMultipleKinderen.toString()
-        })
-        
-        const templatesResponse = await fetch(
-          `${API_URL}/api/lookups/regelingen-templates?${templateParams}`,
-          {
-            headers: getHeaders()
+        try {
+          const templateParams = new URLSearchParams({
+            type: 'Vakantie',
+            meervoudKinderen: hasMultipleKinderen.toString()
+          })
+          
+          const templatesResponse = await fetch(
+            `${API_URL}/api/lookups/regelingen-templates?${templateParams}`,
+            {
+              headers: getHeaders()
+            }
+          )
+          
+          if (!templatesResponse.ok) {
+            console.warn('Failed to fetch regelingen templates, continuing without templates')
+            setRegelingTemplates([])
+          } else {
+            const templatesData = await templatesResponse.json()
+            
+            let templatesArray = templatesData?.data || templatesData || []
+            
+            // Ensure we have a valid array with valid objects
+            if (!Array.isArray(templatesArray)) {
+              templatesArray = []
+            }
+            
+            // Filter out any invalid entries and map to expected structure
+            templatesArray = templatesArray.filter((template: any) => 
+              template && 
+              typeof template === 'object' && 
+              template.id && 
+              template.templateNaam
+            ).map((template: any) => ({
+              id: template.id,
+              naam: template.templateNaam,
+              templateText: template.templateTekst || template.templateText,
+              type: template.type,
+              meervoudKinderen: template.meervoudKinderen
+            }))
+            
+            setRegelingTemplates(templatesArray)
           }
-        )
-        
-        if (!templatesResponse.ok) {
-          throw new Error('Failed to fetch regelingen templates')
+        } catch (templateError) {
+          console.warn('Error fetching regelingen templates:', templateError)
+          setRegelingTemplates([])
         }
-        
-        const templatesData = await templatesResponse.json()
-        const templatesArray = templatesData?.data || templatesData || []
-        setRegelingTemplates(templatesArray)
 
         // Initialize vakantieRegelingen
         const initialRegelingen = vakantiesArray.map((vakantie: Vakantie) => ({
@@ -130,9 +170,9 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       } catch (error) {
         console.error('Error loading data:', error)
         notifications.show({
-          title: 'Fout',
-          message: 'Kon vakantie gegevens niet laden',
-          color: 'red'
+          title: 'Waarschuwing',
+          message: 'Vakanties zijn geladen, maar regelingen konden niet worden opgehaald',
+          color: 'yellow'
         })
       } finally {
         setLoading(false)
@@ -194,31 +234,28 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       }
     }
 
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('nl-NL', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
-    }
 
-    const getProcessedTemplateText = (template: RegelingTemplate) => {
+    const getProcessedTemplateText = (template: RegelingTemplate, vakantie: Vakantie) => {
       let text = template.templateText
       
-      // Replace variables with actual values
+      // Replace variables with actual values (handle both uppercase and lowercase)
       const replacements: Record<string, string> = {
+        '{VAKANTIE}': vakantie.naam,
+        '{vakantie}': vakantie.naam,
+        '{KIND}': hasMultipleKinderen ? 'de kinderen' : 'het kind',
         '{kind}': hasMultipleKinderen ? 'de kinderen' : 'het kind',
         '{Kind}': hasMultipleKinderen ? 'De kinderen' : 'Het kind',
         '{zijn/haar}': hasMultipleKinderen ? 'hun' : 'zijn/haar',
         '{is/zijn}': hasMultipleKinderen ? 'zijn' : 'is',
         '{verblijft/verblijven}': hasMultipleKinderen ? 'verblijven' : 'verblijft',
+        '{PARTIJ1}': partij1?.persoon?.roepnaam || partij1?.persoon?.voornamen || 'Partij 1',
+        '{PARTIJ2}': partij2?.persoon?.roepnaam || partij2?.persoon?.voornamen || 'Partij 2',
         '{partij1}': partij1?.persoon?.roepnaam || partij1?.persoon?.voornamen || 'Partij 1',
         '{partij2}': partij2?.persoon?.roepnaam || partij2?.persoon?.voornamen || 'Partij 2'
       }
       
       Object.entries(replacements).forEach(([variable, value]) => {
-        text = text.replace(new RegExp(variable, 'g'), value)
+        text = text.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'gi'), value)
       })
       
       return text
@@ -247,15 +284,23 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
             return (
               <Card key={vakantie.id} shadow="sm" p="lg" radius="md" withBorder>
                 <Group justify="space-between" align="flex-start" mb="md">
-                    <Text fw={500} size="lg">{vakantie.naam}</Text>
-                   
+                    <Stack gap="xs">
+                      <Text fw={500} size="lg">{vakantie.naam}</Text>
+                      {vakantie.startDatum && vakantie.eindDatum && (
+                        <Text size="sm" c="dimmed">
+                          {new Date(vakantie.startDatum).toLocaleDateString('nl-NL')} - {new Date(vakantie.eindDatum).toLocaleDateString('nl-NL')}
+                        </Text>
+                      )}
+                    </Stack>
                   
                   <Select
-                    placeholder="Selecteer regeling"
-                    data={regelingTemplates.map(template => ({
-                      value: template.id.toString(),
-                      label: template.naam
-                    }))}
+                    placeholder={regelingTemplates.length === 0 ? "Geen regelingen beschikbaar" : "Selecteer regeling"}
+                    data={regelingTemplates
+                      .filter(template => template && template.id && template.naam)
+                      .map(template => ({
+                        value: template.id.toString(),
+                        label: template.naam || 'Onbekende regeling'
+                      }))}
                     value={regeling?.regelingTemplateId?.toString() || null}
                     onChange={(value) => updateVakantieRegeling(
                       vakantie.id,
@@ -263,13 +308,15 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
                     )}
                     style={{ minWidth: 400 }}
                     clearable
+                    disabled={regelingTemplates.length === 0}
+                    searchable={false}
                   />
                 </Group>
                 
                 {selectedTemplate && (
                   <Card withBorder p="md" bg="gray.0">
                     <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                      {getProcessedTemplateText(selectedTemplate)}
+                      {getProcessedTemplateText(selectedTemplate, vakantie)}
                     </Text>
                   </Card>
                 )}
