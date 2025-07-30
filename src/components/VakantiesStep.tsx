@@ -238,13 +238,32 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
     const getProcessedTemplateText = (template: RegelingTemplate, vakantie: Vakantie) => {
       let text = template.templateText
       
+      // Get children names from the nested structure
+      const childrenNames = kinderen.map(item => {
+        const child = item.kind || item
+        return child.roepnaam || child.voornamen || 'Kind'
+      })
+      
+      let kindText = ''
+      if (childrenNames.length === 0) {
+        kindText = 'het kind'
+      } else if (childrenNames.length === 1) {
+        kindText = childrenNames[0]
+      } else if (childrenNames.length === 2) {
+        kindText = `${childrenNames[0]} en ${childrenNames[1]}`
+      } else {
+        const lastChild = childrenNames[childrenNames.length - 1]
+        const otherChildren = childrenNames.slice(0, -1).join(', ')
+        kindText = `${otherChildren} en ${lastChild}`
+      }
+      
       // Replace variables with actual values (handle both uppercase and lowercase)
       const replacements: Record<string, string> = {
         '{VAKANTIE}': vakantie.naam,
         '{vakantie}': vakantie.naam,
-        '{KIND}': hasMultipleKinderen ? 'de kinderen' : 'het kind',
-        '{kind}': hasMultipleKinderen ? 'de kinderen' : 'het kind',
-        '{Kind}': hasMultipleKinderen ? 'De kinderen' : 'Het kind',
+        '{KIND}': kindText,
+        '{kind}': kindText,
+        '{Kind}': kindText.charAt(0).toUpperCase() + kindText.slice(1),
         '{zijn/haar}': hasMultipleKinderen ? 'hun' : 'zijn/haar',
         '{is/zijn}': hasMultipleKinderen ? 'zijn' : 'is',
         '{verblijft/verblijven}': hasMultipleKinderen ? 'verblijven' : 'verblijft',
