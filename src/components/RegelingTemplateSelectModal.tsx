@@ -7,12 +7,10 @@ import {
   Stack,
   Group,
   Button,
-  Badge,
   ScrollArea,
   Loader,
   Alert,
-  Grid,
-  Divider
+  Grid
 } from '@mantine/core'
 import { IconSearch, IconCheck } from '@tabler/icons-react'
 

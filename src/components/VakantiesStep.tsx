@@ -13,6 +13,7 @@ import { notifications } from '@mantine/notifications'
 import { IconEdit } from '@tabler/icons-react'
 import { RegelingTemplateSelectModal } from './RegelingTemplateSelectModal'
 import { useRegelingTemplateModal } from '../hooks/useRegelingTemplateModal'
+import { zorgService } from '../services/zorg.service'
 
 interface Vakantie {
   id: number
@@ -33,6 +34,7 @@ interface RegelingTemplate {
 interface VakantieRegeling {
   vakantieId: number
   regelingTemplateId: number | null
+  zorgId?: string
 }
 
 interface VakantiesStepProps {
@@ -81,12 +83,6 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       }
     }, [vakantieRegelingen, onDataChange])
 
-    const getHeaders = (): HeadersInit => {
-      return {
-        'Content-Type': 'application/json',
-        'x-user-id': '1'
-      }
-    }
 
     const loadData = async () => {
       try {
@@ -94,7 +90,10 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         
         // Load school holidays from zorg-situaties endpoint with categorieId = 6
         const vakantiesResponse = await fetch(`${API_URL}/api/lookups/zorg-situaties?categorieId=6`, {
-          headers: getHeaders()
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': '1'
+          }
         })
         
         if (!vakantiesResponse.ok) {
@@ -137,7 +136,10 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
           const templatesResponse = await fetch(
             `${API_URL}/api/lookups/regelingen-templates?${templateParams}`,
             {
-              headers: getHeaders()
+              headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': '1'
+              }
             }
           )
           
@@ -204,16 +206,11 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       
       try {
         // Load existing vakantie regelingen from zorg endpoint
-        const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/zorg?zorgCategorieId=6`, {
-          headers: getHeaders()
-        })
+        const existingZorgRegelingen = await zorgService.getZorgRegelingen(dossierId, 6)
         
-        if (response.ok) {
-          const data = await response.json()
-          const existingRegelingen = Array.isArray(data) ? data : (data.data || [])
-          
+        if (existingZorgRegelingen.length > 0) {
           // Map existing zorg records back to vakantieRegelingen
-          const mappedRegelingen = existingRegelingen.map((zorgRecord: any) => {
+          const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
             // Try to match the zorgSituatieId with a vakantie ID
             const vakantieId = zorgRecord.zorgSituatieId
             
@@ -228,14 +225,15 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
             
             return {
               vakantieId: vakantieId,
-              regelingTemplateId: matchingTemplate?.id || null
+              regelingTemplateId: matchingTemplate?.id || null,
+              zorgId: zorgRecord.id
             }
-          }).filter((regeling: any) => regeling.vakantieId)
+          }).filter((regeling) => regeling.vakantieId)
           
           // Update vakantieRegelingen with existing data
           setVakantieRegelingen(prev => 
             prev.map(regeling => {
-              const existing = mappedRegelingen.find((m: any) => m.vakantieId === regeling.vakantieId)
+              const existing = mappedRegelingen.find((m) => m.vakantieId === regeling.vakantieId)
               return existing || regeling
             })
           )
@@ -265,26 +263,44 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       if (!dossierId) return
 
       try {
-        // Save each vakantie regeling using the zorg endpoint
+        // Save or update each vakantie regeling using the zorg service
         for (const regeling of vakantieRegelingen) {
-          if (regeling.regelingTemplateId) {
-            const vakantie = vakanties.find(v => v.id === regeling.vakantieId)
-            const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
+          const vakantie = vakanties.find(v => v.id === regeling.vakantieId)
+          const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
+          
+          if (regeling.regelingTemplateId && vakantie && template) {
+            const overeenkomstText = getProcessedTemplateText(template, vakantie)
             
-            if (vakantie && template) {
-              const overeenkomstText = getProcessedTemplateText(template, vakantie)
-              
-              await fetch(`${API_URL}/api/dossiers/${dossierId}/zorg`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                  zorgCategorieId: 6, // Vakantie category
-                  zorgSituatieId: regeling.vakantieId, // Use vakantie ID as situation ID
-                  situatieAnders: vakantie.naam, // Store vakantie name
-                  overeenkomst: overeenkomstText
-                })
-              })
+            const zorgData = {
+              id: regeling.zorgId,
+              zorgCategorieId: 6, // Vakantie category
+              zorgSituatieId: regeling.vakantieId, // Use vakantie ID as situation ID
+              situatieAnders: vakantie.naam, // Store vakantie name
+              overeenkomst: overeenkomstText
             }
+            
+            const savedRegeling = await zorgService.saveOrUpdateZorgRegeling(dossierId, zorgData)
+            
+            // Update the zorgId in our local state
+            setVakantieRegelingen(prev =>
+              prev.map(r =>
+                r.vakantieId === regeling.vakantieId
+                  ? { ...r, zorgId: savedRegeling.id }
+                  : r
+              )
+            )
+          } else if (regeling.zorgId && !regeling.regelingTemplateId) {
+            // If there's a zorgId but no template selected, delete the regeling
+            await zorgService.deleteZorgRegeling(dossierId, regeling.zorgId)
+            
+            // Remove the zorgId from local state
+            setVakantieRegelingen(prev =>
+              prev.map(r =>
+                r.vakantieId === regeling.vakantieId
+                  ? { ...r, zorgId: undefined }
+                  : r
+              )
+            )
           }
         }
         
