@@ -8,8 +8,11 @@ import {
   Paper,
   Alert,
   Modal,
-  Text
+  Text,
+  rem,
+  Box
 } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { IconTrash, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
@@ -62,6 +65,10 @@ export function DossierFormPage() {
   const feestdagenRef = useRef<FeestdagenStepHandle>(null)
   const bijzondereDagenRef = useRef<BijzondereDagenStepHandle>(null)
   const beslissingenRef = useRef<BeslissingenStepHandle>(null)
+  
+  // Responsive breakpoints for stepper
+  const isMobile = useMediaQuery('(max-width: 768px)')
+  const isTablet = useMediaQuery('(max-width: 1024px)')
   
   const {
     partij1,
@@ -452,51 +459,106 @@ export function DossierFormPage() {
         )}
       </Group>
 
-      <Stepper active={active} onStepClick={setActive} mb="xl">
+      <Box 
+        mb="xl" 
+        style={{ 
+          overflowX: 'auto',
+          overflowY: 'visible',
+          paddingBottom: rem(4)
+        }}
+      >
+        <Stepper 
+          active={active} 
+          onStepClick={setActive}
+          size="xs"
+          orientation={isMobile ? "vertical" : "horizontal"}
+          styles={{
+            root: {
+              minWidth: isMobile ? undefined : 'max-content',
+            },
+            content: {
+              paddingTop: rem(0),
+            },
+            separator: {
+              marginLeft: rem(0),
+              marginRight: rem(0),
+              minWidth: rem(5),
+              maxWidth: rem(15),
+            },
+            step: {
+              padding: rem(2),
+              minWidth: 'auto',
+            },
+            stepIcon: {
+              width: rem(28),
+              height: rem(28),
+              minWidth: rem(28),
+              fontSize: rem(12),
+            },
+            stepBody: {
+              marginTop: rem(2),
+              marginLeft: rem(4),
+              minWidth: 0,
+            },
+            stepLabel: {
+              fontSize: rem(11),
+              fontWeight: 600,
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+            },
+            stepDescription: {
+              display: isTablet ? 'none' : 'block',
+              fontSize: rem(10),
+              marginTop: rem(1),
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+            }
+          }}
+        >
         <Stepper.Step 
-          label="Stap 1" 
-          description="Dossier gegevens"
+          label="Dossier" 
+          description={isMobile ? undefined : "Gegevens"}
           allowStepSelect={canProceed(0)}
           disabled={isEdit}
         />
         <Stepper.Step 
-          label="Stap 2" 
-          description="Partijen selecteren"
+          label="Partijen" 
+          description={isMobile ? undefined : "Selecteren"}
           allowStepSelect={canProceed(1)}
         />
         <Stepper.Step 
-          label="Stap 3" 
-          description="Kinderen toevoegen"
+          label="Kinderen" 
+          description={isMobile ? undefined : "Toevoegen"}
           allowStepSelect={canProceed(2)}
         />
         <Stepper.Step 
-          label="Stap 4" 
-          description="Omgangsregeling"
+          label="Omgang" 
+          description={isMobile ? undefined : "Regeling"}
           allowStepSelect={canProceed(3)}
         />
         <Stepper.Step 
-          label="Stap 5" 
-          description="Vakantieregelingen"
+          label="Vakanties" 
+          description={isMobile ? undefined : "Regelingen"}
           allowStepSelect={canProceed(4)}
         />
         <Stepper.Step 
-          label="Stap 6" 
-          description="Feestdagenregelingen"
+          label="Feestdagen" 
+          description={isMobile ? undefined : "Regelingen"}
           allowStepSelect={canProceed(5)}
         />
         <Stepper.Step 
-          label="Stap 7" 
-          description="Bijzondere dagen"
+          label="Bijzonder" 
+          description={isMobile ? undefined : "Dagen"}
           allowStepSelect={canProceed(6)}
         />
         <Stepper.Step 
-          label="Stap 8" 
-          description="Beslissingen"
+          label="Beslissingen" 
+          description={isMobile ? undefined : "Overig"}
           allowStepSelect={canProceed(7)}
         />
         <Stepper.Step 
-          label="Stap 9" 
-          description="Controle & Overzicht"
+          label="Controle" 
+          description={isMobile ? undefined : "Overzicht"}
           allowStepSelect={canProceed(8)}
         />
         <Stepper.Completed>
@@ -508,6 +570,7 @@ export function DossierFormPage() {
           </Alert>
         </Stepper.Completed>
       </Stepper>
+    </Box>
 
       <Paper shadow="sm" p="xl" radius="md" withBorder>
         {active === 0 && (
