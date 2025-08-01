@@ -8,11 +8,26 @@ export interface ZorgRegeling {
   overeenkomst: string
 }
 
-export interface ZorgRegelingResponse extends ZorgRegeling {
+export interface ZorgRegelingResponse {
   id: string
-  dossierId: string
-  createdAt: string
-  updatedAt: string
+  dossierId?: string
+  zorgCategorieId?: number
+  zorgSituatieId?: number
+  zorgCategorie?: {
+    id: number
+    naam: string
+  }
+  zorgSituatie?: {
+    id: number
+    naam: string
+    zorgCategorieId: number
+  }
+  situatieAnders?: string
+  overeenkomst: string
+  aangemaaktOp?: string
+  gewijzigdOp?: string
+  aangemaaktDoor?: number
+  gewijzigdDoor?: number | null
 }
 
 class ZorgService {

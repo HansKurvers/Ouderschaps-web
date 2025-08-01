@@ -35,6 +35,7 @@ interface VakantieRegeling {
   vakantieId: number
   regelingTemplateId: number | null
   zorgId?: string
+  overeenkomst?: string
 }
 
 interface VakantiesStepProps {
@@ -58,6 +59,7 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
     const [vakantieRegelingen, setVakantieRegelingen] = useState<VakantieRegeling[]>([])
     const [loading, setLoading] = useState(true)
     const [activeVakantieId, setActiveVakantieId] = useState<number | null>(null)
+    const [templatesLoaded, setTemplatesLoaded] = useState(false)
 
     const hasMultipleKinderen = kinderen.length > 1
 
@@ -82,6 +84,13 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         onDataChange(vakantieRegelingen)
       }
     }, [vakantieRegelingen, onDataChange])
+
+    // Load existing data when both vakanties and templates are loaded
+    useEffect(() => {
+      if (dossierId && vakanties.length > 0 && !loading && templatesLoaded) {
+        loadExistingVakantieRegelingen()
+      }
+    }, [dossierId, vakanties.length, loading, templatesLoaded])
 
 
     const loadData = async () => {
@@ -175,6 +184,8 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         } catch (templateError) {
           console.warn('Error fetching regelingen templates:', templateError)
           setRegelingTemplates([])
+        } finally {
+          setTemplatesLoaded(true)
         }
 
         // Initialize vakantieRegelingen
@@ -183,11 +194,6 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
           regelingTemplateId: null
         }))
         setVakantieRegelingen(initialRegelingen)
-
-        // Load existing data if dossierId exists
-        if (dossierId) {
-          await loadExistingVakantieRegelingen()
-        }
         
       } catch (error) {
         console.error('Error loading data:', error)
@@ -212,21 +218,32 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
           // Map existing zorg records back to vakantieRegelingen
           const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
             // Try to match the zorgSituatieId with a vakantie ID
-            const vakantieId = zorgRecord.zorgSituatieId
+            const vakantieId = zorgRecord.zorgSituatie?.id || zorgRecord.zorgSituatieId
             
-            // Try to find a template that matches the overeenkomst text
-            // This is a simplified approach - in production, you might store the template ID differently
-            const matchingTemplate = regelingTemplates.find(template => {
-              const processedText = vakanties
-                .filter(v => v.id === vakantieId)
-                .map(v => getProcessedTemplateText(template, v))[0]
-              return processedText === zorgRecord.overeenkomst
-            })
+            // Try to parse the template ID from situatieAnders
+            let templateId = null
+            try {
+              if (zorgRecord.situatieAnders) {
+                const parsed = JSON.parse(zorgRecord.situatieAnders)
+                templateId = parsed.templateId || null
+              }
+            } catch (e) {
+              // Fallback: try to find a template that matches the overeenkomst text
+              const matchingTemplate = regelingTemplates.find(template => {
+                const processedText = vakanties
+                  .filter(v => v.id === vakantieId)
+                  .map(v => getProcessedTemplateText(template, v))[0]
+                return processedText === zorgRecord.overeenkomst
+              })
+              templateId = matchingTemplate?.id || null
+            }
+            
             
             return {
-              vakantieId: vakantieId,
-              regelingTemplateId: matchingTemplate?.id || null,
-              zorgId: zorgRecord.id
+              vakantieId: vakantieId as number,
+              regelingTemplateId: templateId,
+              zorgId: zorgRecord.id,
+              overeenkomst: zorgRecord.overeenkomst
             }
           }).filter((regeling) => regeling.vakantieId)
           
@@ -275,7 +292,10 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
               id: regeling.zorgId,
               zorgCategorieId: 6, // Vakantie category
               zorgSituatieId: regeling.vakantieId, // Use vakantie ID as situation ID
-              situatieAnders: vakantie.naam, // Store vakantie name
+              situatieAnders: JSON.stringify({
+                vakantieNaam: vakantie.naam,
+                templateId: regeling.regelingTemplateId
+              }), // Store vakantie name and template ID
               overeenkomst: overeenkomstText
             }
             
@@ -385,6 +405,7 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
             const regeling = vakantieRegelingen.find(r => r.vakantieId === vakantie.id)
             const selectedTemplate = regelingTemplates.find(t => t.id === regeling?.regelingTemplateId)
             
+            
             return (
               <Card key={vakantie.id} shadow="sm" p="lg" radius="md" withBorder>
                 <Group justify="space-between" align="flex-start" mb="md">
@@ -407,10 +428,12 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
                   </Button>
                 </Group>
                 
-                {selectedTemplate && (
+                {(selectedTemplate || regeling?.zorgId) && (
                   <Card withBorder p="md" bg="gray.0">
                     <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                      {getProcessedTemplateText(selectedTemplate, vakantie)}
+                      {selectedTemplate 
+                        ? getProcessedTemplateText(selectedTemplate, vakantie)
+                        : regeling?.overeenkomst || 'Bestaande regeling laden...'}
                     </Text>
                   </Card>
                 )}
