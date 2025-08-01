@@ -27,6 +27,7 @@ import { DossierOverviewStep } from '../components/DossierOverviewStep'
 import { OmgangsregelingStep, OmgangsregelingStepHandle } from '../components/OmgangsregelingStep'
 import { VakantiesStep, VakantiesStepHandle } from '../components/VakantiesStep'
 import { FeestdagenStep, FeestdagenStepHandle } from '../components/FeestdagenStep'
+import { BijzondereDagenStep, BijzondereDagenStepHandle } from '../components/BijzondereDagenStep'
 import { useDossierPartijen } from '../hooks/useDossierPartijen'
 import { loadDossierData, getDossierNummer } from '../utils/dossierHelpers'
 import { submitDossier } from '../utils/dossierSubmit'
@@ -58,6 +59,7 @@ export function DossierFormPage() {
   const omgangsregelingRef = useRef<OmgangsregelingStepHandle>(null)
   const vakantiesRef = useRef<VakantiesStepHandle>(null)
   const feestdagenRef = useRef<FeestdagenStepHandle>(null)
+  const bijzondereDagenRef = useRef<BijzondereDagenStepHandle>(null)
   
   const {
     partij1,
@@ -368,7 +370,25 @@ export function DossierFormPage() {
         }
       }
       
-      setActive((current) => current < 7 ? current + 1 : current)
+      // Save bijzondere dagen data when moving from step 6 to 7
+      if (active === 6 && dossierId && bijzondereDagenRef.current) {
+        try {
+          setLoading(true)
+          await bijzondereDagenRef.current.saveData()
+        } catch (error) {
+          console.error('Error saving bijzondere dagen data:', error)
+          notifications.show({
+            title: 'Fout',
+            message: 'Kon bijzondere dagen regelingen niet opslaan',
+            color: 'red'
+          })
+          return
+        } finally {
+          setLoading(false)
+        }
+      }
+      
+      setActive((current) => current < 8 ? current + 1 : current)
     }
   }
   
@@ -430,8 +450,13 @@ export function DossierFormPage() {
         />
         <Stepper.Step 
           label="Stap 7" 
-          description="Controle & Overzicht"
+          description="Bijzondere dagen"
           allowStepSelect={canProceed(6)}
+        />
+        <Stepper.Step 
+          label="Stap 8" 
+          description="Controle & Overzicht"
+          allowStepSelect={canProceed(7)}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -500,6 +525,16 @@ export function DossierFormPage() {
         )}
 
         {active === 6 && (
+          <BijzondereDagenStep
+            ref={bijzondereDagenRef}
+            dossierId={dossierId}
+            kinderen={kinderen}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+
+        {active === 7 && (
           <DossierOverviewStep
             dossierNummer={form.values.dossierNummer}
             partij1={partij1}
@@ -519,7 +554,7 @@ export function DossierFormPage() {
             Vorige
           </Button>
           
-          {active === 6 ? (
+          {active === 7 ? (
             <Button onClick={handleSubmit} loading={loading}>
               {isEdit ? 'Opslaan' : 'Dossier Aanmaken'}
             </Button>
