@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle } from 'react'
+import React, { useState, useEffect, useImperativeHandle, useRef } from 'react'
 import {
   Container,
   Title,
@@ -100,6 +100,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
     const [activeSituatieId, setActiveSituatieId] = useState<number | null>(null)
     const [templatesLoaded, setTemplatesLoaded] = useState(false)
     const [zorgCategories, setZorgCategories] = useState<Record<number, string>>({})
+    const [isSaving, setIsSaving] = useState(false)
+    const lastSaveTimeRef = useRef<number>(0)
 
     const hasMultipleKinderen = kinderen.length > 1
 
@@ -494,6 +496,21 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
         return
       }
 
+      // Prevent duplicate saves
+      if (isSaving) {
+        console.log('Save already in progress, skipping duplicate save')
+        return
+      }
+
+      // Prevent rapid successive saves (within 1 second)
+      const now = Date.now()
+      if (now - lastSaveTimeRef.current < 1000) {
+        console.log('Save called too quickly, skipping to prevent duplicate')
+        return
+      }
+
+      lastSaveTimeRef.current = now
+      setIsSaving(true)
       try {
         for (const regeling of zorgRegelingen) {
           const situatie = situaties.find(s => s.id === regeling.situatieId)
@@ -607,6 +624,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           message: `Kon ${title.toLowerCase()} regelingen niet opslaan: ${errorMessage}`,
           color: 'red'
         })
+      } finally {
+        setIsSaving(false)
       }
     }
 
