@@ -7,10 +7,12 @@ import {
   Text,
   Group,
   Loader,
-  Button
+  Button,
+  TextInput,
+  ActionIcon
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconEdit } from '@tabler/icons-react'
+import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react'
 import { RegelingTemplateSelectModal } from './RegelingTemplateSelectModal'
 import { useRegelingTemplateModal } from '../hooks/useRegelingTemplateModal'
 import { zorgService } from '../services/zorg.service'
@@ -42,6 +44,8 @@ interface ZorgRegeling {
   regelingTemplateId: number | null
   zorgId?: string
   overeenkomst?: string
+  customNaam?: string
+  tempId?: number
 }
 
 export interface ZorgRegelingenStepProps {
@@ -88,10 +92,23 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
 
     const hasMultipleKinderen = kinderen.length > 1
 
+    const [activeTempId, setActiveTempId] = useState<number | null>(null)
+    
     const modal = useRegelingTemplateModal({
       onSelect: (template) => {
         if (activeSituatieId) {
-          updateZorgRegeling(activeSituatieId, template.id)
+          if (activeTempId) {
+            // For custom regelingen, update by tempId
+            setZorgRegelingen(prev => 
+              prev.map(regeling => 
+                regeling.tempId === activeTempId 
+                  ? { ...regeling, regelingTemplateId: template.id }
+                  : regeling
+              )
+            )
+          } else {
+            updateZorgRegeling(activeSituatieId, template.id)
+          }
         }
       }
     })
@@ -238,41 +255,61 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
             const situatieId = zorgRecord.zorgSituatie?.id || zorgRecord.zorgSituatieId
             
-            // Try to find a template that matches the overeenkomst text
-            let templateId = null
-            const matchingTemplate = regelingTemplates.find(template => {
-              const situatie = situaties.find(s => s.id === situatieId)
-              if (!situatie) return false
-              const processedText = getProcessedTemplateText(template, situatie)
-              return processedText === zorgRecord.overeenkomst
-            })
-            templateId = matchingTemplate?.id || null
-            
-            
-            return {
-              situatieId: situatieId as number,
-              regelingTemplateId: templateId,
-              zorgId: zorgRecord.id,
-              overeenkomst: zorgRecord.overeenkomst
+            // Check if this is a custom regeling
+            if (situatieId === 15 && zorgRecord.situatieAnders) {
+              // Custom regeling
+              return {
+                situatieId: 15,
+                regelingTemplateId: null, // Will try to match template later
+                zorgId: zorgRecord.id,
+                overeenkomst: zorgRecord.overeenkomst,
+                customNaam: zorgRecord.situatieAnders,
+                tempId: Date.now() + Math.random() // Unique tempId for existing custom
+              }
+            } else {
+              // Normal regeling
+              let templateId = null
+              const matchingTemplate = regelingTemplates.find(template => {
+                const situatie = situaties.find(s => s.id === situatieId)
+                if (!situatie) return false
+                const processedText = getProcessedTemplateText(template, situatie)
+                return processedText === zorgRecord.overeenkomst
+              })
+              templateId = matchingTemplate?.id || null
+              
+              return {
+                situatieId: situatieId as number,
+                regelingTemplateId: templateId,
+                zorgId: zorgRecord.id,
+                overeenkomst: zorgRecord.overeenkomst
+              }
             }
           }).filter((regeling) => regeling.situatieId)
           
           
           // Update zorgRegelingen with existing data
           setZorgRegelingen(prev => {
+            // First, add all custom regelingen from API
+            const customFromAPI = mappedRegelingen.filter(r => r.situatieId === 15)
+            
+            // Then update normal regelingen
             const updated = prev.map(regeling => {
-              const existing = mappedRegelingen.find((m) => m.situatieId === regeling.situatieId)
-              if (existing) {
-                return {
-                  ...regeling,
-                  regelingTemplateId: existing.regelingTemplateId,
-                  zorgId: existing.zorgId,
-                  overeenkomst: existing.overeenkomst
+              if (regeling.situatieId !== 15) {
+                const existing = mappedRegelingen.find((m) => m.situatieId === regeling.situatieId)
+                if (existing) {
+                  return {
+                    ...regeling,
+                    regelingTemplateId: existing.regelingTemplateId,
+                    zorgId: existing.zorgId,
+                    overeenkomst: existing.overeenkomst
+                  }
                 }
               }
               return regeling
             })
-            return updated
+            
+            // Add custom regelingen at the end
+            return [...updated, ...customFromAPI]
           })
         }
       } catch (error) {
@@ -290,9 +327,36 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       )
     }
 
-    const openTemplateModal = (situatieId: number) => {
+    const addCustomRegeling = () => {
+      const newRegeling: ZorgRegeling = {
+        situatieId: 15,
+        regelingTemplateId: null,
+        customNaam: '',
+        tempId: Date.now()
+      }
+      setZorgRegelingen(prev => [...prev, newRegeling])
+    }
+
+    const removeCustomRegeling = (tempId: number) => {
+      setZorgRegelingen(prev => prev.filter(r => r.tempId !== tempId))
+    }
+
+    const updateCustomNaam = (tempId: number, customNaam: string) => {
+      setZorgRegelingen(prev => 
+        prev.map(regeling => 
+          regeling.tempId === tempId 
+            ? { ...regeling, customNaam }
+            : regeling
+        )
+      )
+    }
+
+    const openTemplateModal = (situatieId: number, tempId?: number) => {
       setActiveSituatieId(situatieId)
-      const currentRegeling = zorgRegelingen.find(r => r.situatieId === situatieId)
+      setActiveTempId(tempId || null)
+      const currentRegeling = zorgRegelingen.find(r => 
+        tempId ? r.tempId === tempId : r.situatieId === situatieId
+      )
       modal.open(currentRegeling?.regelingTemplateId)
     }
 
@@ -304,7 +368,35 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           const situatie = situaties.find(s => s.id === regeling.situatieId)
           const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
           
-          if (regeling.regelingTemplateId && situatie && template) {
+          if (regeling.situatieId === 15) {
+            // Custom regeling
+            if (regeling.customNaam && (regeling.regelingTemplateId || regeling.overeenkomst)) {
+              const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
+              const overeenkomstText = template 
+                ? getProcessedTemplateText(template, { id: 15, naam: regeling.customNaam, type: templateType })
+                : regeling.overeenkomst || ''
+              
+              const zorgData = {
+                id: regeling.zorgId,
+                zorgCategorieId: zorgCategorieId,
+                zorgSituatieId: 15,
+                situatieAnders: regeling.customNaam,
+                overeenkomst: overeenkomstText
+              }
+              
+              const savedRegeling = await zorgService.saveOrUpdateZorgRegeling(dossierId, zorgData)
+              
+              // Update the zorgId in our local state
+              setZorgRegelingen(prev =>
+                prev.map(r =>
+                  r.tempId === regeling.tempId
+                    ? { ...r, zorgId: savedRegeling.id }
+                    : r
+                )
+              )
+            }
+          } else if (regeling.regelingTemplateId && situatie && template) {
+            // Normal regeling
             const overeenkomstText = getProcessedTemplateText(template, situatie)
             
             const zorgData = {
@@ -391,8 +483,9 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
         <Title order={2} mb="lg">{title}</Title>
         
         <Stack gap="md">
+          {/* Normal situaties */}
           {situaties.map(situatie => {
-            const regeling = zorgRegelingen.find(r => r.situatieId === situatie.id)
+            const regeling = zorgRegelingen.find(r => r.situatieId === situatie.id && !r.tempId)
             const selectedTemplate = regelingTemplates.find(t => t.id === regeling?.regelingTemplateId)
             
             return (
@@ -430,7 +523,72 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             )
           })}
           
-          {situaties.length === 0 && (
+          {/* Custom regelingen */}
+          {zorgRegelingen
+            .filter(r => r.situatieId === 15)
+            .map(regeling => {
+              const selectedTemplate = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
+              
+              return (
+                <Card key={regeling.tempId} shadow="sm" p="lg" radius="md" withBorder>
+                  <Group justify="space-between" align="flex-start" mb="md">
+                    <Stack gap="xs" style={{ flex: 1 }}>
+                      <TextInput
+                        placeholder="Naam van de situatie"
+                        value={regeling.customNaam || ''}
+                        onChange={(e) => updateCustomNaam(regeling.tempId!, e.currentTarget.value)}
+                        fw={500}
+                        size="lg"
+                        style={{ fontWeight: 500 }}
+                      />
+                    </Stack>
+                    
+                    <Group gap="xs">
+                      <Button
+                        variant={selectedTemplate ? "light" : "default"}
+                        leftSection={<IconEdit size={16} />}
+                        onClick={() => openTemplateModal(15, regeling.tempId)}
+                        disabled={regelingTemplates.length === 0}
+                      >
+                        {selectedTemplate ? "Wijzig regeling" : "Selecteer regeling"}
+                      </Button>
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        onClick={() => removeCustomRegeling(regeling.tempId!)}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                  
+                  {(selectedTemplate || regeling.zorgId) && regeling.customNaam && (
+                    <Card withBorder p="md" bg="gray.0">
+                      <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedTemplate 
+                          ? getProcessedTemplateText(selectedTemplate, { 
+                              id: 15, 
+                              naam: regeling.customNaam, 
+                              type: templateType 
+                            })
+                          : regeling.overeenkomst || 'Bestaande regeling laden...'}
+                      </Text>
+                    </Card>
+                  )}
+                </Card>
+              )
+            })}
+          
+          {/* Add new custom regeling button */}
+          <Button
+            variant="default"
+            leftSection={<IconPlus size={16} />}
+            onClick={addCustomRegeling}
+          >
+            Nieuwe regeling toevoegen
+          </Button>
+          
+          {situaties.length === 0 && zorgRegelingen.filter(r => r.situatieId === 15).length === 0 && (
             <Card withBorder p="xl">
               <Text ta="center" c="dimmed">
                 Geen {title.toLowerCase()} gevonden
@@ -448,7 +606,20 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           title={`Selecteer een ${templateType.toLowerCase()}regeling`}
           loading={false}
           templateContext={(() => {
-            const situatie = situaties.find(s => s.id === activeSituatieId)
+            let situatie = situaties.find(s => s.id === activeSituatieId)
+            
+            // For custom regelingen, create a virtual situatie
+            if (activeSituatieId === 15 && activeTempId) {
+              const customRegeling = zorgRegelingen.find(r => r.tempId === activeTempId)
+              if (customRegeling) {
+                situatie = {
+                  id: 15,
+                  naam: customRegeling.customNaam || '',
+                  type: templateType
+                }
+              }
+            }
+            
             const childrenNames = kinderen.map(item => {
               const child = item.kind || item
               return child.roepnaam || child.voornamen || 'Kind'
