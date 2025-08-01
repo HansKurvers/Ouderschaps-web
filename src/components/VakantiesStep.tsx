@@ -28,7 +28,7 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         {...props}
         zorgCategorieId={6}
         title="Vakantieregelingen"
-        situatiesEndpoint="/api/lookups/zorg-situaties?categorieId=6"
+        situatiesEndpoint="/api/lookups/zorg-situaties?categoryId=6"
         templateType="Vakantie"
         getSituatieLabel={getSituatieLabel}
       />

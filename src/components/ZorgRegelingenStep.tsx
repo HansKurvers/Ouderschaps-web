@@ -29,13 +29,15 @@ export interface ZorgSituatie {
   startDatum?: string
   eindDatum?: string
   type?: string
+  zorgCategorieId?: number
+  categorieNaam?: string
 }
 
 interface RegelingTemplate {
   id: number
   naam: string
   templateText: string
-  type: 'Vakantie' | 'Feestdag' | 'Anders'
+  type: 'Vakantie' | 'Feestdag' | 'Anders' | 'Algemeen'
   meervoudKinderen: boolean
 }
 
@@ -58,9 +60,11 @@ export interface ZorgRegelingenStepProps {
   zorgCategorieId: number
   title: string
   situatiesEndpoint: string
-  templateType: 'Vakantie' | 'Feestdag' | 'Anders'
+  templateType: 'Vakantie' | 'Feestdag' | 'Anders' | 'Algemeen'
   getSituatieLabel?: (situatie: ZorgSituatie) => string
   getTemplateVariables?: (situatie: ZorgSituatie) => TemplateContext
+  enableCategoryGrouping?: boolean
+  allowCustomFields?: boolean
 }
 
 export interface ZorgRegelingenStepHandle {
@@ -81,7 +85,9 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
     situatiesEndpoint,
     templateType,
     getSituatieLabel,
-    getTemplateVariables
+    getTemplateVariables,
+    enableCategoryGrouping = false,
+    allowCustomFields = false
   }, ref) => {
     const [situaties, setSituaties] = useState<ZorgSituatie[]>([])
     const [regelingTemplates, setRegelingTemplates] = useState<RegelingTemplate[]>([])
@@ -89,6 +95,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
     const [loading, setLoading] = useState(true)
     const [activeSituatieId, setActiveSituatieId] = useState<number | null>(null)
     const [templatesLoaded, setTemplatesLoaded] = useState(false)
+    const [zorgCategories, setZorgCategories] = useState<Record<number, string>>({})
 
     const hasMultipleKinderen = kinderen.length > 1
 
@@ -120,6 +127,18 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
     useEffect(() => {
       loadData()
     }, [hasMultipleKinderen])
+    
+    // Update situaties with category names when categories are loaded
+    useEffect(() => {
+      if (enableCategoryGrouping && Object.keys(zorgCategories).length > 0) {
+        setSituaties(prev => prev.map(situatie => ({
+          ...situatie,
+          categorieNaam: situatie.categorieNaam || 
+            (situatie.zorgCategorieId && zorgCategories[situatie.zorgCategorieId]) || 
+            undefined
+        })))
+      }
+    }, [zorgCategories, enableCategoryGrouping])
 
     useEffect(() => {
       if (onDataChange) {
@@ -137,6 +156,33 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
     const loadData = async () => {
       try {
         setLoading(true)
+        
+        // First load categories if grouping is enabled
+        if (enableCategoryGrouping) {
+          try {
+            const categoriesResponse = await fetch(`${API_URL}/api/lookups/zorg-categorieen`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': '1'
+              }
+            })
+            
+            if (categoriesResponse.ok) {
+              const categoriesData = await categoriesResponse.json()
+              const categoriesMap: Record<number, string> = {}
+              if (categoriesData.data && Array.isArray(categoriesData.data)) {
+                categoriesData.data.forEach((cat: any) => {
+                  if (cat.id && cat.naam) {
+                    categoriesMap[cat.id] = cat.naam
+                  }
+                })
+              }
+              setZorgCategories(categoriesMap)
+            }
+          } catch (error) {
+            console.warn('Failed to load categories:', error)
+          }
+        }
         
         // Load situaties (vakanties/feestdagen)
         // Ensure the endpoint includes the zorgCategorieId parameter
@@ -171,13 +217,18 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           typeof item === 'object' && 
           item.id && 
           item.naam
-        ).map((item: any) => ({
-          id: item.id,
-          naam: item.naam,
-          startDatum: item.startDatum || item.start_datum,
-          eindDatum: item.eindDatum || item.eind_datum,
-          type: templateType
-        }))
+        ).map((item: any) => {
+          const categoryId = item.zorgCategorieId || item.zorg_categorie_id
+          return {
+            id: item.id,
+            naam: item.naam,
+            startDatum: item.startDatum || item.start_datum,
+            eindDatum: item.eindDatum || item.eind_datum,
+            type: templateType,
+            zorgCategorieId: categoryId,
+            categorieNaam: item.categorieNaam || item.zorgCategorie?.naam || item.categorie_naam || (categoryId ? zorgCategories[categoryId] : undefined)
+          }
+        })
         
         setSituaties(situatiesArray)
 
@@ -256,16 +307,22 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       if (!dossierId) return
       
       try {
-        const existingZorgRegelingen = await zorgService.getZorgRegelingen(dossierId, zorgCategorieId)
+        const existingZorgRegelingen = zorgCategorieId === -1 
+          ? await zorgService.getZorgRegelingen(dossierId)
+          : await zorgService.getZorgRegelingen(dossierId, zorgCategorieId)
         
         if (existingZorgRegelingen.length > 0) {
           const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
             const situatieId = zorgRecord.zorgSituatie?.id || zorgRecord.zorgSituatieId
             const recordCategorieId = zorgRecord.zorgCategorieId || zorgRecord.zorgCategorie?.id || zorgRecord.zorgSituatie?.zorgCategorieId
             
+            // Check if this record belongs to our category selection
+            const belongsToCategory = zorgCategorieId === -1 
+              ? recordCategorieId && recordCategorieId !== 6 && recordCategorieId !== 9 && recordCategorieId !== 10
+              : recordCategorieId === zorgCategorieId
             
             // Check if this is a custom regeling for the current category
-            if (situatieId === 15 && zorgRecord.situatieAnders && templateType !== 'Vakantie' && recordCategorieId === zorgCategorieId) {
+            if (situatieId === 15 && zorgRecord.situatieAnders && templateType !== 'Vakantie' && belongsToCategory) {
               // Custom regeling for current category (skip for Vakantie template type)
               return {
                 situatieId: 15,
@@ -275,7 +332,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 customNaam: zorgRecord.situatieAnders,
                 tempId: Date.now() + Math.random() // Unique tempId for existing custom
               }
-            } else if ((situatieId !== 15 || templateType === 'Vakantie') && recordCategorieId === zorgCategorieId) {
+            } else if ((situatieId !== 15 || templateType === 'Vakantie') && belongsToCategory) {
               // Normal regeling for current category
               let templateId = null
               const matchingTemplate = regelingTemplates.find(template => {
@@ -410,9 +467,14 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 ? getProcessedTemplateText(template, { id: 15, naam: regeling.customNaam, type: templateType })
                 : regeling.overeenkomst || ''
               
+              // For BeslissingenStep, use a default category for custom regelingen
+              const categoryId = zorgCategorieId === -1 
+                ? 8 // "Anders" category ID
+                : zorgCategorieId
+              
               const zorgData = {
                 id: regeling.zorgId,
-                zorgCategorieId: zorgCategorieId,
+                zorgCategorieId: categoryId,
                 zorgSituatieId: 15,
                 situatieAnders: regeling.customNaam,
                 overeenkomst: overeenkomstText
@@ -433,9 +495,14 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             // Normal regeling
             const overeenkomstText = getProcessedTemplateText(template, situatie)
             
+            // For BeslissingenStep, use the category from the situatie
+            const categoryId = zorgCategorieId === -1 && situatie.zorgCategorieId
+              ? situatie.zorgCategorieId
+              : zorgCategorieId
+            
             const zorgData = {
               id: regeling.zorgId,
-              zorgCategorieId: zorgCategorieId,
+              zorgCategorieId: categoryId,
               zorgSituatieId: regeling.situatieId,
               overeenkomst: overeenkomstText
             }
@@ -501,6 +568,36 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       })
     }
 
+    // Group situaties by category if enabled
+    const groupedSituaties = React.useMemo(() => {
+      if (!enableCategoryGrouping) {
+        return { '': situaties }
+      }
+      
+      const groups: Record<string, ZorgSituatie[]> = {}
+      situaties.forEach(situatie => {
+        const categoryName = situatie.categorieNaam || 
+          (situatie.zorgCategorieId && zorgCategories[situatie.zorgCategorieId]) || 
+          'Overig'
+        if (!groups[categoryName]) {
+          groups[categoryName] = []
+        }
+        groups[categoryName].push(situatie)
+      })
+      
+      // Sort categories alphabetically and sort items within each category
+      const sortedGroups: Record<string, ZorgSituatie[]> = {}
+      Object.keys(groups)
+        .sort((a, b) => a.localeCompare(b, 'nl'))
+        .forEach(categoryName => {
+          sortedGroups[categoryName] = groups[categoryName].sort((a, b) => 
+            a.naam.localeCompare(b.naam, 'nl')
+          )
+        })
+      
+      return sortedGroups
+    }, [situaties, enableCategoryGrouping, zorgCategories])
+
     if (loading) {
       return (
         <Container>
@@ -518,7 +615,12 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
         
         <Stack gap="md">
           {/* Normal situaties */}
-          {situaties.map(situatie => {
+          {Object.entries(groupedSituaties).map(([categoryName, categorySituaties]) => (
+            <React.Fragment key={categoryName}>
+              {enableCategoryGrouping && categoryName && (
+                <Title order={4} mt="md" mb="sm">{categoryName}</Title>
+              )}
+              {categorySituaties.map(situatie => {
             const regeling = zorgRegelingen.find(r => r.situatieId === situatie.id && !r.tempId)
             const selectedTemplate = regelingTemplates.find(t => t.id === regeling?.regelingTemplateId)
             
@@ -568,9 +670,11 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
               </Card>
             )
           })}
+            </React.Fragment>
+          ))}
           
-          {/* Custom regelingen - only show for non-vacation categories */}
-          {templateType !== 'Vakantie' && zorgRegelingen
+          {/* Custom regelingen - only show when allowed */}
+          {(allowCustomFields || templateType !== 'Vakantie') && zorgRegelingen
             .filter(r => r.situatieId === 15)
             .map(regeling => {
               const selectedTemplate = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
@@ -625,8 +729,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
               )
             })}
           
-          {/* Add new custom regeling button - only show for non-vacation categories */}
-          {templateType !== 'Vakantie' && (
+          {/* Add new custom regeling button - only show when allowed */}
+          {(allowCustomFields || templateType !== 'Vakantie') && (
             <Button
               variant="default"
               leftSection={<IconPlus size={16} />}

@@ -50,7 +50,7 @@ export const BijzondereDagenStep = React.forwardRef<BijzondereDagenStepHandle, B
         {...props}
         zorgCategorieId={10}
         title="Bijzondere dagen"
-        situatiesEndpoint="/api/lookups/zorg-situaties?categorieId=10"
+        situatiesEndpoint="/api/lookups/zorg-situaties?categoryId=10"
         templateType="Feestdag" // Gebruik Feestdag templates zoals gevraagd
         getSituatieLabel={getSituatieLabel}
         getTemplateVariables={getTemplateVariables}

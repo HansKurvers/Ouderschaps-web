@@ -21,7 +21,7 @@ export interface RegelingTemplate {
   id: number
   naam: string
   templateText: string
-  type: 'Vakantie' | 'Feestdag' | 'Anders'
+  type: 'Vakantie' | 'Feestdag' | 'Anders' | 'Algemeen'
   meervoudKinderen: boolean
 }
 
