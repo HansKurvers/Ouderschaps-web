@@ -442,7 +442,15 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
     }
 
     const saveZorgData = async () => {
-      if (!dossierId) return
+      if (!dossierId) {
+        console.error('No dossierId provided to saveZorgData')
+        notifications.show({
+          title: 'Fout',
+          message: 'Geen dossier ID beschikbaar',
+          color: 'red'
+        })
+        return
+      }
 
       try {
         for (const regeling of zorgRegelingen) {
@@ -467,9 +475,9 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 ? getProcessedTemplateText(template, { id: 15, naam: regeling.customNaam, type: templateType })
                 : regeling.overeenkomst || ''
               
-              // For BeslissingenStep, use a default category for custom regelingen
+              // For BeslissingenStep, custom regelingen should use "Anders" category (8)
               const categoryId = zorgCategorieId === -1 
-                ? 8 // "Anders" category ID
+                ? 8 // "Anders" category ID for custom items
                 : zorgCategorieId
               
               const zorgData = {
@@ -496,9 +504,14 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             const overeenkomstText = getProcessedTemplateText(template, situatie)
             
             // For BeslissingenStep, use the category from the situatie
-            const categoryId = zorgCategorieId === -1 && situatie.zorgCategorieId
-              ? situatie.zorgCategorieId
+            const categoryId = zorgCategorieId === -1 
+              ? situatie.zorgCategorieId // Use the situation's own category
               : zorgCategorieId
+            
+            if (!categoryId) {
+              console.error('No zorgCategorieId found for situatie:', situatie)
+              continue // Skip this regeling if no category ID
+            }
             
             const zorgData = {
               id: regeling.zorgId,
@@ -536,11 +549,12 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           message: `${title} regelingen opgeslagen`,
           color: 'green'
         })
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error saving zorg regelingen:', error)
+        const errorMessage = error?.response?.data?.message || error?.message || 'Onbekende fout'
         notifications.show({
           title: 'Fout',
-          message: `Kon ${title.toLowerCase()} regelingen niet opslaan`,
+          message: `Kon ${title.toLowerCase()} regelingen niet opslaan: ${errorMessage}`,
           color: 'red'
         })
       }

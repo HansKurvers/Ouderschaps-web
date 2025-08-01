@@ -297,6 +297,26 @@ export function DossierFormPage() {
   }
 
   const nextStep = async () => {
+    // Save step data before moving to next step
+    if (dossierId) {
+      try {
+        if (active === 3 && omgangsregelingRef.current) {
+          await omgangsregelingRef.current.saveData()
+        } else if (active === 4 && vakantiesRef.current) {
+          await vakantiesRef.current.saveData()
+        } else if (active === 5 && feestdagenRef.current) {
+          await feestdagenRef.current.saveData()
+        } else if (active === 6 && bijzondereDagenRef.current) {
+          await bijzondereDagenRef.current.saveData()
+        } else if (active === 7 && beslissingenRef.current) {
+          await beslissingenRef.current.saveData()
+        }
+      } catch (error) {
+        console.error('Error saving step data:', error)
+        return // Don't proceed to next step if save fails
+      }
+    }
+    
     // After step 2 (partijen), create the dossier if it's new
     if (active === 1 && !isEdit && partij1.persoon && partij2.persoon) {
       setLoading(true)
