@@ -688,9 +688,12 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           ))}
           
           {/* Custom regelingen - only show when allowed */}
-          {(allowCustomFields || templateType !== 'Vakantie') && zorgRegelingen
-            .filter(r => r.situatieId === 15)
-            .map(regeling => {
+          {(allowCustomFields || templateType !== 'Vakantie') && (
+            <>
+              <Title order={4} mt="xl" mb="md">Overige afspraken</Title>
+              {zorgRegelingen
+                .filter(r => r.situatieId === 15)
+                .map(regeling => {
               const selectedTemplate = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
               
               return (
@@ -742,16 +745,16 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 </Card>
               )
             })}
-          
-          {/* Add new custom regeling button - only show when allowed */}
-          {(allowCustomFields || templateType !== 'Vakantie') && (
-            <Button
-              variant="default"
-              leftSection={<IconPlus size={16} />}
-              onClick={addCustomRegeling}
-            >
-              Nieuwe regeling toevoegen
-            </Button>
+              
+              {/* Add new custom regeling button */}
+              <Button
+                variant="default"
+                leftSection={<IconPlus size={16} />}
+                onClick={addCustomRegeling}
+              >
+                Nieuwe regeling toevoegen
+              </Button>
+            </>
           )}
           
           {situaties.length === 0 && zorgRegelingen.filter(r => r.situatieId === 15).length === 0 && (
