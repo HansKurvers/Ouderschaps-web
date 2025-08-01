@@ -14,6 +14,11 @@ import { IconEdit } from '@tabler/icons-react'
 import { RegelingTemplateSelectModal } from './RegelingTemplateSelectModal'
 import { useRegelingTemplateModal } from '../hooks/useRegelingTemplateModal'
 import { zorgService } from '../services/zorg.service'
+import { 
+  processTemplateText, 
+  createDutchPluralReplacements, 
+  formatDutchNameList 
+} from '../utils/templateProcessor'
 
 interface Vakantie {
   id: number
@@ -214,30 +219,25 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         // Load existing vakantie regelingen from zorg endpoint
         const existingZorgRegelingen = await zorgService.getZorgRegelingen(dossierId, 6)
         
+        console.log('Loading existing regelingen:', existingZorgRegelingen)
+        
         if (existingZorgRegelingen.length > 0) {
           // Map existing zorg records back to vakantieRegelingen
           const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
             // Try to match the zorgSituatieId with a vakantie ID
             const vakantieId = zorgRecord.zorgSituatie?.id || zorgRecord.zorgSituatieId
             
-            // Try to parse the template ID from situatieAnders
+            // Try to find a template that matches the overeenkomst text
             let templateId = null
-            try {
-              if (zorgRecord.situatieAnders) {
-                const parsed = JSON.parse(zorgRecord.situatieAnders)
-                templateId = parsed.templateId || null
-              }
-            } catch (e) {
-              // Fallback: try to find a template that matches the overeenkomst text
-              const matchingTemplate = regelingTemplates.find(template => {
-                const processedText = vakanties
-                  .filter(v => v.id === vakantieId)
-                  .map(v => getProcessedTemplateText(template, v))[0]
-                return processedText === zorgRecord.overeenkomst
-              })
-              templateId = matchingTemplate?.id || null
-            }
+            const matchingTemplate = regelingTemplates.find(template => {
+              const vakantie = vakanties.find(v => v.id === vakantieId)
+              if (!vakantie) return false
+              const processedText = getProcessedTemplateText(template, vakantie)
+              return processedText === zorgRecord.overeenkomst
+            })
+            templateId = matchingTemplate?.id || null
             
+            console.log(`Mapping zorg record: vakantieId=${vakantieId}, templateId=${templateId}, zorgId=${zorgRecord.id}`)
             
             return {
               vakantieId: vakantieId as number,
@@ -247,13 +247,26 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
             }
           }).filter((regeling) => regeling.vakantieId)
           
+          console.log('Mapped regelingen:', mappedRegelingen)
+          
           // Update vakantieRegelingen with existing data
-          setVakantieRegelingen(prev => 
-            prev.map(regeling => {
+          setVakantieRegelingen(prev => {
+            const updated = prev.map(regeling => {
               const existing = mappedRegelingen.find((m) => m.vakantieId === regeling.vakantieId)
-              return existing || regeling
+              if (existing) {
+                // Merge existing data with current state
+                return {
+                  ...regeling,
+                  regelingTemplateId: existing.regelingTemplateId,
+                  zorgId: existing.zorgId,
+                  overeenkomst: existing.overeenkomst
+                }
+              }
+              return regeling
             })
-          )
+            console.log('Updated vakantieRegelingen:', updated)
+            return updated
+          })
         }
       } catch (error) {
         console.error('Error loading existing vakantie regelingen:', error)
@@ -292,10 +305,6 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
               id: regeling.zorgId,
               zorgCategorieId: 6, // Vakantie category
               zorgSituatieId: regeling.vakantieId, // Use vakantie ID as situation ID
-              situatieAnders: JSON.stringify({
-                vakantieNaam: vakantie.naam,
-                templateId: regeling.regelingTemplateId
-              }), // Store vakantie name and template ID
               overeenkomst: overeenkomstText
             }
             
@@ -341,48 +350,23 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
 
 
     const getProcessedTemplateText = (template: RegelingTemplate, vakantie: Vakantie) => {
-      let text = template.templateText
-      
       // Get children names from the nested structure
       const childrenNames = kinderen.map(item => {
         const child = item.kind || item
         return child.roepnaam || child.voornamen || 'Kind'
       })
       
-      let kindText = ''
-      if (childrenNames.length === 0) {
-        kindText = 'het kind'
-      } else if (childrenNames.length === 1) {
-        kindText = childrenNames[0]
-      } else if (childrenNames.length === 2) {
-        kindText = `${childrenNames[0]} en ${childrenNames[1]}`
-      } else {
-        const lastChild = childrenNames[childrenNames.length - 1]
-        const otherChildren = childrenNames.slice(0, -1).join(', ')
-        kindText = `${otherChildren} en ${lastChild}`
-      }
+      const kindText = formatDutchNameList(childrenNames)
       
-      // Replace variables with actual values (handle both uppercase and lowercase)
-      const replacements: Record<string, string> = {
-        '{VAKANTIE}': vakantie.naam,
-        '{vakantie}': vakantie.naam,
-        '{KIND}': kindText,
-        '{kind}': kindText,
-        '{Kind}': kindText.charAt(0).toUpperCase() + kindText.slice(1),
-        '{zijn/haar}': hasMultipleKinderen ? 'hun' : 'zijn/haar',
-        '{is/zijn}': hasMultipleKinderen ? 'zijn' : 'is',
-        '{verblijft/verblijven}': hasMultipleKinderen ? 'verblijven' : 'verblijft',
-        '{PARTIJ1}': partij1?.persoon?.roepnaam || partij1?.persoon?.voornamen || 'Partij 1',
-        '{PARTIJ2}': partij2?.persoon?.roepnaam || partij2?.persoon?.voornamen || 'Partij 2',
-        '{partij1}': partij1?.persoon?.roepnaam || partij1?.persoon?.voornamen || 'Partij 1',
-        '{partij2}': partij2?.persoon?.roepnaam || partij2?.persoon?.voornamen || 'Partij 2'
-      }
-      
-      Object.entries(replacements).forEach(([variable, value]) => {
-        text = text.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'gi'), value)
+      return processTemplateText(template.templateText, {
+        variables: {
+          vakantie: vakantie.naam,
+          kind: kindText,
+          partij1: partij1?.persoon?.roepnaam || partij1?.persoon?.voornamen || 'Partij 1',
+          partij2: partij2?.persoon?.roepnaam || partij2?.persoon?.voornamen || 'Partij 2'
+        },
+        customReplacements: createDutchPluralReplacements(hasMultipleKinderen)
       })
-      
-      return text
     }
 
     if (loading) {
@@ -458,10 +442,21 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
           selectedTemplateId={modal.selectedTemplateId}
           title="Selecteer een vakantieregeling"
           loading={false}
-          processTemplateText={(template) => {
+          templateContext={(() => {
             const vakantie = vakanties.find(v => v.id === activeVakantieId)
-            return vakantie ? getProcessedTemplateText(template, vakantie) : template.templateText
-          }}
+            const childrenNames = kinderen.map(item => {
+              const child = item.kind || item
+              return child.roepnaam || child.voornamen || 'Kind'
+            })
+            
+            return {
+              vakantie: vakantie?.naam || '',
+              kind: formatDutchNameList(childrenNames),
+              partij1: partij1?.persoon?.roepnaam || partij1?.persoon?.voornamen || 'Partij 1',
+              partij2: partij2?.persoon?.roepnaam || partij2?.persoon?.voornamen || 'Partij 2'
+            }
+          })()}
+          customReplacements={createDutchPluralReplacements(hasMultipleKinderen)}
           emptyMessage="Geen vakantieregeling templates beschikbaar"
         />
       </Container>

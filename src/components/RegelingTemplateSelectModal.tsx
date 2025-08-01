@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Modal,
   TextInput,
@@ -10,9 +10,12 @@ import {
   ScrollArea,
   Loader,
   Alert,
-  Grid
+  Grid,
+  Badge,
+  Divider
 } from '@mantine/core'
 import { IconSearch, IconCheck } from '@tabler/icons-react'
+import { processTemplateText, TemplateContext } from '../utils/templateProcessor'
 
 export interface RegelingTemplate {
   id: number
@@ -31,7 +34,8 @@ interface RegelingTemplateSelectModalProps {
   title?: string
   loading?: boolean
   error?: string | null
-  processTemplateText?: (template: RegelingTemplate) => string
+  templateContext?: TemplateContext
+  customReplacements?: Record<string, string>
   emptyMessage?: string
 }
 
@@ -44,7 +48,8 @@ export function RegelingTemplateSelectModal({
   title = 'Selecteer een regeling template',
   loading = false,
   error = null,
-  processTemplateText,
+  templateContext = {},
+  customReplacements,
   emptyMessage = 'Geen templates beschikbaar'
 }: RegelingTemplateSelectModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -57,15 +62,37 @@ export function RegelingTemplateSelectModal({
     }
   }, [opened, selectedTemplateId, templates])
 
-  const filteredTemplates = templates.filter(template => {
-    if (!searchQuery) return true
+  const getProcessedText = (template: RegelingTemplate) => {
+    return processTemplateText(template.templateText, {
+      variables: templateContext,
+      customReplacements
+    })
+  }
+
+  // Process templates with context for searching and display
+  const processedTemplates = useMemo(() => {
+    return templates.map(template => ({
+      ...template,
+      processedText: getProcessedText(template)
+    }))
+  }, [templates, templateContext, customReplacements])
+
+  // Filter and sort templates based on processed text
+  const filteredAndSortedTemplates = useMemo(() => {
+    let filtered = processedTemplates
     
-    const searchLower = searchQuery.toLowerCase()
-    const nameMatch = template.naam.toLowerCase().includes(searchLower)
-    const textMatch = template.templateText.toLowerCase().includes(searchLower)
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase()
+      filtered = filtered.filter(template => {
+        const nameMatch = template.naam.toLowerCase().includes(searchLower)
+        const textMatch = template.processedText.toLowerCase().includes(searchLower)
+        return nameMatch || textMatch
+      })
+    }
     
-    return nameMatch || textMatch
-  })
+    // Sort by processed text (description)
+    return filtered.sort((a, b) => a.processedText.localeCompare(b.processedText))
+  }, [processedTemplates, searchQuery])
 
   const handleSelect = (template: RegelingTemplate) => {
     setSelectedTemplate(template)
@@ -76,13 +103,6 @@ export function RegelingTemplateSelectModal({
       onSelect(selectedTemplate)
       onClose()
     }
-  }
-
-  const getProcessedText = (template: RegelingTemplate) => {
-    if (processTemplateText) {
-      return processTemplateText(template)
-    }
-    return template.templateText
   }
 
   return (
@@ -111,13 +131,13 @@ export function RegelingTemplateSelectModal({
         ) : (
           <>
             <ScrollArea h={400} type="auto">
-              {filteredTemplates.length === 0 ? (
+              {filteredAndSortedTemplates.length === 0 ? (
                 <Text ta="center" py="xl" c="dimmed">
                   {searchQuery ? 'Geen templates gevonden' : emptyMessage}
                 </Text>
               ) : (
                 <Grid gutter="md">
-                  {filteredTemplates.map((template) => (
+                  {filteredAndSortedTemplates.map((template) => (
                     <Grid.Col span={12} key={template.id}>
                       <Card
                         shadow="sm"
@@ -134,9 +154,8 @@ export function RegelingTemplateSelectModal({
                       >
                        
                         
-                        
-                        <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                          {getProcessedText(template)}
+                        <Text size="sm" style={{ whiteSpace: 'pre-wrap' }} >
+                          {template.processedText}
                         </Text>
                       </Card>
                     </Grid.Col>
