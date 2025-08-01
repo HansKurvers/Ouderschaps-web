@@ -331,7 +331,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       setZorgRegelingen(prev => 
         prev.map(regeling => 
           regeling.situatieId === situatieId 
-            ? { ...regeling, regelingTemplateId }
+            ? { ...regeling, regelingTemplateId, overeenkomst: regelingTemplateId ? regeling.overeenkomst : undefined }
             : regeling
         )
       )
@@ -347,7 +347,21 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       setZorgRegelingen(prev => [...prev, newRegeling])
     }
 
-    const removeCustomRegeling = (tempId: number) => {
+    const removeCustomRegeling = async (tempId: number) => {
+      const regeling = zorgRegelingen.find(r => r.tempId === tempId)
+      if (regeling?.zorgId && dossierId) {
+        try {
+          await zorgService.deleteZorgRegeling(dossierId, regeling.zorgId)
+        } catch (error) {
+          console.error('Error deleting custom regeling:', error)
+          notifications.show({
+            title: 'Fout',
+            message: 'Kon de regeling niet verwijderen',
+            color: 'red'
+          })
+          return
+        }
+      }
       setZorgRegelingen(prev => prev.filter(r => r.tempId !== tempId))
     }
 
@@ -380,7 +394,17 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           
           if (regeling.situatieId === 15 && templateType !== 'Vakantie') {
             // Custom regeling (skip for Vakantie template type)
-            if (regeling.customNaam && (regeling.regelingTemplateId || regeling.overeenkomst)) {
+            if (!regeling.customNaam || (!regeling.regelingTemplateId && !regeling.overeenkomst)) {
+              // Delete custom regeling if no name or no template/overeenkomst
+              if (regeling.zorgId) {
+                await zorgService.deleteZorgRegeling(dossierId, regeling.zorgId)
+                
+                // Remove from local state after successful deletion
+                setZorgRegelingen(prev =>
+                  prev.filter(r => r.tempId !== regeling.tempId)
+                )
+              }
+            } else if (regeling.customNaam && (regeling.regelingTemplateId || regeling.overeenkomst)) {
               const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
               const overeenkomstText = template 
                 ? getProcessedTemplateText(template, { id: 15, naam: regeling.customNaam, type: templateType })
@@ -510,17 +534,29 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                     )}
                   </Stack>
                   
-                  <Button
-                    variant={selectedTemplate ? "light" : "default"}
-                    leftSection={<IconEdit size={16} />}
-                    onClick={() => openTemplateModal(situatie.id)}
-                    disabled={regelingTemplates.length === 0}
-                  >
-                    {selectedTemplate ? "Wijzig regeling" : "Selecteer regeling"}
-                  </Button>
+                  <Group gap="xs">
+                    <Button
+                      variant={selectedTemplate ? "light" : "default"}
+                      leftSection={<IconEdit size={16} />}
+                      onClick={() => openTemplateModal(situatie.id)}
+                      disabled={regelingTemplates.length === 0}
+                    >
+                      {selectedTemplate ? "Wijzig regeling" : "Selecteer regeling"}
+                    </Button>
+                    {selectedTemplate && (
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        onClick={() => updateZorgRegeling(situatie.id, null)}
+                        title="Regeling verwijderen"
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    )}
+                  </Group>
                 </Group>
                 
-                {(selectedTemplate || regeling?.zorgId) && (
+                {(selectedTemplate || (regeling?.zorgId && regeling?.overeenkomst)) && (
                   <Card withBorder p="md" bg="gray.0">
                     <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
                       {selectedTemplate 
