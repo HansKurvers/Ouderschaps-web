@@ -9,7 +9,9 @@ import {
   Loader,
   Button,
   TextInput,
-  ActionIcon
+  ActionIcon,
+  Textarea,
+  SegmentedControl
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react'
@@ -48,6 +50,8 @@ interface ZorgRegeling {
   overeenkomst?: string
   customNaam?: string
   tempId?: number
+  useCustomText?: boolean
+  customOvereenkomst?: string
 }
 
 export interface ZorgRegelingenStepProps {
@@ -324,13 +328,29 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             // Check if this is a custom regeling for the current category
             if (situatieId === 15 && zorgRecord.situatieAnders && templateType !== 'Vakantie' && belongsToCategory) {
               // Custom regeling for current category (skip for Vakantie template type)
+              // Try to match with a template first
+              let templateId = null
+              let useCustomText = true
+              
+              const matchingTemplate = regelingTemplates.find(template => {
+                const processedText = getProcessedTemplateText(template, { id: 15, naam: zorgRecord.situatieAnders || '', type: templateType })
+                return processedText === zorgRecord.overeenkomst
+              })
+              
+              if (matchingTemplate) {
+                templateId = matchingTemplate.id
+                useCustomText = false
+              }
+              
               return {
                 situatieId: 15,
-                regelingTemplateId: null, // Will try to match template later
+                regelingTemplateId: templateId,
                 zorgId: zorgRecord.id,
                 overeenkomst: zorgRecord.overeenkomst,
                 customNaam: zorgRecord.situatieAnders,
-                tempId: Date.now() + Math.random() // Unique tempId for existing custom
+                tempId: Date.now() + Math.random(), // Unique tempId for existing custom
+                useCustomText: useCustomText,
+                customOvereenkomst: useCustomText ? zorgRecord.overeenkomst : ''
               }
             } else if ((situatieId !== 15 || templateType === 'Vakantie') && belongsToCategory) {
               // Normal regeling for current category
@@ -399,7 +419,9 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
         situatieId: 15,
         regelingTemplateId: null,
         customNaam: '',
-        tempId: Date.now()
+        tempId: Date.now(),
+        useCustomText: false,
+        customOvereenkomst: ''
       }
       setZorgRegelingen(prev => [...prev, newRegeling])
     }
@@ -427,6 +449,26 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
         prev.map(regeling => 
           regeling.tempId === tempId 
             ? { ...regeling, customNaam }
+            : regeling
+        )
+      )
+    }
+    
+    const updateCustomOvereenkomst = (tempId: number, customOvereenkomst: string) => {
+      setZorgRegelingen(prev => 
+        prev.map(regeling => 
+          regeling.tempId === tempId 
+            ? { ...regeling, customOvereenkomst }
+            : regeling
+        )
+      )
+    }
+    
+    const toggleUseCustomText = (tempId: number, useCustomText: boolean) => {
+      setZorgRegelingen(prev => 
+        prev.map(regeling => 
+          regeling.tempId === tempId 
+            ? { ...regeling, useCustomText, regelingTemplateId: useCustomText ? null : regeling.regelingTemplateId }
             : regeling
         )
       )
@@ -469,11 +511,19 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                   prev.filter(r => r.tempId !== regeling.tempId)
                 )
               }
-            } else if (regeling.customNaam && (regeling.regelingTemplateId || regeling.overeenkomst)) {
-              const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
-              const overeenkomstText = template 
-                ? getProcessedTemplateText(template, { id: 15, naam: regeling.customNaam, type: templateType })
-                : regeling.overeenkomst || ''
+            } else if (regeling.customNaam && (regeling.regelingTemplateId || regeling.overeenkomst || regeling.customOvereenkomst)) {
+              let overeenkomstText = ''
+              
+              if (regeling.useCustomText && regeling.customOvereenkomst) {
+                overeenkomstText = regeling.customOvereenkomst
+              } else if (regeling.regelingTemplateId) {
+                const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
+                overeenkomstText = template 
+                  ? getProcessedTemplateText(template, { id: 15, naam: regeling.customNaam, type: templateType })
+                  : ''
+              } else {
+                overeenkomstText = regeling.overeenkomst || ''
+              }
               
               // For BeslissingenStep, custom regelingen should use "Anders" category (8)
               const categoryId = zorgCategorieId === -1 
@@ -710,37 +760,60 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                       />
                     </Stack>
                     
-                    <Group gap="xs">
-                      <Button
-                        variant={selectedTemplate ? "light" : "default"}
-                        leftSection={<IconEdit size={16} />}
-                        onClick={() => openTemplateModal(15, regeling.tempId)}
-                        disabled={regelingTemplates.length === 0}
-                      >
-                        {selectedTemplate ? "Wijzig regeling" : "Selecteer regeling"}
-                      </Button>
-                      <ActionIcon
-                        color="red"
-                        variant="subtle"
-                        onClick={() => removeCustomRegeling(regeling.tempId!)}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
+                    <ActionIcon
+                      color="red"
+                      variant="subtle"
+                      onClick={() => removeCustomRegeling(regeling.tempId!)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
                   </Group>
                   
-                  {(selectedTemplate || regeling.zorgId) && regeling.customNaam && (
-                    <Card withBorder p="md" bg="gray.0">
-                      <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                        {selectedTemplate 
-                          ? getProcessedTemplateText(selectedTemplate, { 
-                              id: 15, 
-                              naam: regeling.customNaam, 
-                              type: templateType 
-                            })
-                          : regeling.overeenkomst || 'Bestaande regeling laden...'}
-                      </Text>
-                    </Card>
+                  {regeling.customNaam && templateType === 'Algemeen' && (
+                    <Stack gap="md">
+                      <SegmentedControl
+                        value={regeling.useCustomText ? 'custom' : 'template'}
+                        onChange={(value) => toggleUseCustomText(regeling.tempId!, value === 'custom')}
+                        data={[
+                          { label: 'Gebruik template', value: 'template' },
+                          { label: 'Eigen tekst', value: 'custom' }
+                        ]}
+                      />
+                      
+                      {regeling.useCustomText ? (
+                        <Textarea
+                          placeholder="Voer hier de afspraak in..."
+                          value={regeling.customOvereenkomst || ''}
+                          onChange={(e) => updateCustomOvereenkomst(regeling.tempId!, e.currentTarget.value)}
+                          minRows={3}
+                          autosize
+                        />
+                      ) : (
+                        <Stack gap="md">
+                          <Button
+                            variant={selectedTemplate ? "light" : "default"}
+                            leftSection={<IconEdit size={16} />}
+                            onClick={() => openTemplateModal(15, regeling.tempId)}
+                            disabled={regelingTemplates.length === 0}
+                            fullWidth
+                          >
+                            {selectedTemplate ? "Wijzig regeling template" : "Selecteer regeling template"}
+                          </Button>
+                          
+                          {selectedTemplate && (
+                            <Card withBorder p="md" bg="gray.0">
+                              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                                {getProcessedTemplateText(selectedTemplate, { 
+                                  id: 15, 
+                                  naam: regeling.customNaam, 
+                                  type: templateType 
+                                })}
+                              </Text>
+                            </Card>
+                          )}
+                        </Stack>
+                      )}
+                    </Stack>
                   )}
                 </Card>
               )
