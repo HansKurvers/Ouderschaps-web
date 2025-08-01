@@ -233,7 +233,6 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       try {
         const existingZorgRegelingen = await zorgService.getZorgRegelingen(dossierId, zorgCategorieId)
         
-        console.log('Loading existing regelingen:', existingZorgRegelingen)
         
         if (existingZorgRegelingen.length > 0) {
           const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
@@ -249,7 +248,6 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             })
             templateId = matchingTemplate?.id || null
             
-            console.log(`Mapping zorg record: situatieId=${situatieId}, templateId=${templateId}, zorgId=${zorgRecord.id}`)
             
             return {
               situatieId: situatieId as number,
@@ -259,7 +257,6 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             }
           }).filter((regeling) => regeling.situatieId)
           
-          console.log('Mapped regelingen:', mappedRegelingen)
           
           // Update zorgRegelingen with existing data
           setZorgRegelingen(prev => {
@@ -275,7 +272,6 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
               }
               return regeling
             })
-            console.log('Updated zorgRegelingen:', updated)
             return updated
           })
         }
