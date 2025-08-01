@@ -385,45 +385,49 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     if (!dossierId) return
 
     try {
-      // Delete existing omgang data first
-      const response = await omgangService.getOmgangByDossier(dossierId)
-      
-      // Handle response structure
-      let existingData: Omgang[] = []
-      if (response && typeof response === 'object' && 'data' in response) {
-        existingData = response.data
-      } else if (Array.isArray(response)) {
-        existingData = response
-      }
-      
-      
-      if (Array.isArray(existingData)) {
-        for (const omgang of existingData) {
-          if (omgang.id) {
-            await omgangService.deleteOmgang(dossierId, omgang.id)
-          }
-        }
-      }
-
-      // Save new omgang data
+      // Process each week table using the upsert week endpoint
       for (const tabel of weekTabellen) {
+        if (!tabel.weekRegelingId) continue // Skip tables without a week regeling
+        
+        // Transform data to match the new API format
+        const daysMap = new Map<number, {
+          dagId: number,
+          wisselTijd: string,
+          dagdelen: Array<{ dagdeelId: number, verzorgerId: number }>
+        }>()
+        
+        // Process each cell in the table
         for (const [key, cellData] of Object.entries(tabel.omgangData)) {
           if (cellData.verzorgerId) {
             const [dagId, dagdeelId] = key.split('-').map(Number)
             
-            // Use day-level wisseltijd
-            const wisselTijd = tabel.wisselTijden?.[dagId] || ''
-            
-            const omgangData = {
-              dagId: dagId,
-              dagdeelId: dagdeelId,
-              verzorgerId: parseInt(cellData.verzorgerId),
-              wisselTijd: wisselTijd,
-              weekRegelingId: tabel.weekRegelingId || 1,
-              weekRegelingAnders: ''
+            if (!daysMap.has(dagId)) {
+              daysMap.set(dagId, {
+                dagId,
+                wisselTijd: tabel.wisselTijden?.[dagId] || '',
+                dagdelen: []
+              })
             }
-            await omgangService.createOmgang(dossierId, omgangData)
+            
+            daysMap.get(dagId)!.dagdelen.push({
+              dagdeelId,
+              verzorgerId: parseInt(cellData.verzorgerId)
+            })
           }
+        }
+        
+        // Convert map to array and sort by dagId
+        const days = Array.from(daysMap.values()).sort((a, b) => a.dagId - b.dagId)
+        
+        // Only send if there are days with data
+        if (days.length > 0) {
+          const weekData = {
+            weekRegelingId: tabel.weekRegelingId,
+            weekRegelingAnders: '',
+            days
+          }
+          
+          await omgangService.upsertWeekData(dossierId, weekData)
         }
       }
 
@@ -630,9 +634,6 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
     )
   }
 
-  //TODO Save week should be a single query in the backend instead of multiple
-
-  //TODO check loading problems
   if (loading) {
     return <Container>Laden...</Container>
   }

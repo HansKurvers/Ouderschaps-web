@@ -100,6 +100,59 @@ class OmgangService {
     
     return response.json()
   }
+
+  async createOmgangBatch(dossierId: string, entries: any[]): Promise<any> {
+    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/batch`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ entries })
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to create omgang batch: ${errorText}`)
+    }
+    
+    return response.json()
+  }
+
+  async upsertWeekData(dossierId: string, weekData: {
+    weekRegelingId: number,
+    weekRegelingAnders: string,
+    days: Array<{
+      dagId: number,
+      wisselTijd: string,
+      dagdelen: Array<{
+        dagdeelId: number,
+        verzorgerId: number
+      }>
+    }>
+  }): Promise<any> {
+    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/week`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(weekData)
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to upsert week data: ${errorText}`)
+    }
+    
+    return response.json()
+  }
+
+  async getWeekData(dossierId: string, weekRegelingId: number): Promise<any> {
+    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/week/${weekRegelingId}`, {
+      headers: this.getHeaders()
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch week data')
+    }
+    
+    return response.json()
+  }
 }
 
 export const omgangService = new OmgangService()
