@@ -2,14 +2,17 @@ import React, { useState, useEffect, useImperativeHandle } from 'react'
 import {
   Container,
   Title,
-  Select,
   Stack,
   Card,
   Text,
   Group,
-  Loader
+  Loader,
+  Button
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { IconEdit } from '@tabler/icons-react'
+import { RegelingTemplateSelectModal } from './RegelingTemplateSelectModal'
+import { useRegelingTemplateModal } from '../hooks/useRegelingTemplateModal'
 
 interface Vakantie {
   id: number
@@ -23,7 +26,7 @@ interface RegelingTemplate {
   id: number
   naam: string
   templateText: string
-  type: 'Vakantie' | 'Feestdag'
+  type: 'Vakantie' | 'Feestdag' | 'Anders'
   meervoudKinderen: boolean
 }
 
@@ -52,8 +55,17 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
     const [regelingTemplates, setRegelingTemplates] = useState<RegelingTemplate[]>([])
     const [vakantieRegelingen, setVakantieRegelingen] = useState<VakantieRegeling[]>([])
     const [loading, setLoading] = useState(true)
+    const [activeVakantieId, setActiveVakantieId] = useState<number | null>(null)
 
     const hasMultipleKinderen = kinderen.length > 1
+
+    const modal = useRegelingTemplateModal({
+      onSelect: (template) => {
+        if (activeVakantieId) {
+          updateVakantieRegeling(activeVakantieId, template.id)
+        }
+      }
+    })
 
     useImperativeHandle(ref, () => ({
       saveData: saveVakantieData
@@ -80,8 +92,8 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       try {
         setLoading(true)
         
-        // Load school holidays
-        const vakantiesResponse = await fetch(`${API_URL}/api/lookups/schoolvakanties`, {
+        // Load school holidays from zorg-situaties endpoint with categorieId = 6
+        const vakantiesResponse = await fetch(`${API_URL}/api/lookups/zorg-situaties?categorieId=6`, {
           headers: getHeaders()
         })
         
@@ -90,20 +102,28 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
         }
         
         const vakantiesData = await vakantiesResponse.json()
-        let vakantiesArray = vakantiesData?.data || vakantiesData || []
+        
+        // The response is an array of care situations (which are vakanties in this case)
+        let vakantiesArray = Array.isArray(vakantiesData) ? vakantiesData : (vakantiesData.data || [])
         
         // Ensure we have a valid array
         if (!Array.isArray(vakantiesArray)) {
           vakantiesArray = []
         }
         
-        // Filter out any invalid entries
-        vakantiesArray = vakantiesArray.filter((vakantie: any) => 
-          vakantie && 
-          typeof vakantie === 'object' && 
-          vakantie.id && 
-          vakantie.naam
-        )
+        // Map zorg situaties to vakantie structure
+        vakantiesArray = vakantiesArray.filter((item: any) => 
+          item && 
+          typeof item === 'object' && 
+          item.id && 
+          item.naam
+        ).map((item: any) => ({
+          id: item.id,
+          naam: item.naam,
+          startDatum: item.startDatum || item.start_datum,
+          eindDatum: item.eindDatum || item.eind_datum,
+          type: 'Vakantie'
+        }))
         
         setVakanties(vakantiesArray)
 
@@ -183,12 +203,43 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       if (!dossierId) return
       
       try {
-        // TODO: Implement API call to load existing vakantie regelingen
-        // const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/vakantie-regelingen`, {
-        //   headers: getHeaders()
-        // })
-        // const data = await response.json()
-        // Update vakantieRegelingen with existing data
+        // Load existing vakantie regelingen from zorg endpoint
+        const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/zorg?zorgCategorieId=6`, {
+          headers: getHeaders()
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          const existingRegelingen = Array.isArray(data) ? data : (data.data || [])
+          
+          // Map existing zorg records back to vakantieRegelingen
+          const mappedRegelingen = existingRegelingen.map((zorgRecord: any) => {
+            // Try to match the zorgSituatieId with a vakantie ID
+            const vakantieId = zorgRecord.zorgSituatieId
+            
+            // Try to find a template that matches the overeenkomst text
+            // This is a simplified approach - in production, you might store the template ID differently
+            const matchingTemplate = regelingTemplates.find(template => {
+              const processedText = vakanties
+                .filter(v => v.id === vakantieId)
+                .map(v => getProcessedTemplateText(template, v))[0]
+              return processedText === zorgRecord.overeenkomst
+            })
+            
+            return {
+              vakantieId: vakantieId,
+              regelingTemplateId: matchingTemplate?.id || null
+            }
+          }).filter((regeling: any) => regeling.vakantieId)
+          
+          // Update vakantieRegelingen with existing data
+          setVakantieRegelingen(prev => 
+            prev.map(regeling => {
+              const existing = mappedRegelingen.find((m: any) => m.vakantieId === regeling.vakantieId)
+              return existing || regeling
+            })
+          )
+        }
       } catch (error) {
         console.error('Error loading existing vakantie regelingen:', error)
       }
@@ -204,20 +255,38 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
       )
     }
 
+    const openTemplateModal = (vakantieId: number) => {
+      setActiveVakantieId(vakantieId)
+      const currentRegeling = vakantieRegelingen.find(r => r.vakantieId === vakantieId)
+      modal.open(currentRegeling?.regelingTemplateId)
+    }
+
     const saveVakantieData = async () => {
       if (!dossierId) return
 
       try {
-        // TODO: Implement API call to save vakantie regelingen
-        // for (const regeling of vakantieRegelingen) {
-        //   if (regeling.regelingTemplateId) {
-        //     await fetch(`${API_URL}/api/dossiers/${dossierId}/vakantie-regelingen`, {
-        //       method: 'POST',
-        //       headers: getHeaders(),
-        //       body: JSON.stringify(regeling)
-        //     })
-        //   }
-        // }
+        // Save each vakantie regeling using the zorg endpoint
+        for (const regeling of vakantieRegelingen) {
+          if (regeling.regelingTemplateId) {
+            const vakantie = vakanties.find(v => v.id === regeling.vakantieId)
+            const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
+            
+            if (vakantie && template) {
+              const overeenkomstText = getProcessedTemplateText(template, vakantie)
+              
+              await fetch(`${API_URL}/api/dossiers/${dossierId}/zorg`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                  zorgCategorieId: 6, // Vakantie category
+                  zorgSituatieId: regeling.vakantieId, // Use vakantie ID as situation ID
+                  situatieAnders: vakantie.naam, // Store vakantie name
+                  overeenkomst: overeenkomstText
+                })
+              })
+            }
+          }
+        }
         
         notifications.show({
           title: 'Succes',
@@ -312,24 +381,14 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
                       )}
                     </Stack>
                   
-                  <Select
-                    placeholder={regelingTemplates.length === 0 ? "Geen regelingen beschikbaar" : "Selecteer regeling"}
-                    data={regelingTemplates
-                      .filter(template => template && template.id && template.naam)
-                      .map(template => ({
-                        value: template.id.toString(),
-                        label: template.naam || 'Onbekende regeling'
-                      }))}
-                    value={regeling?.regelingTemplateId?.toString() || null}
-                    onChange={(value) => updateVakantieRegeling(
-                      vakantie.id,
-                      value ? parseInt(value) : null
-                    )}
-                    style={{ minWidth: 400 }}
-                    clearable
+                  <Button
+                    variant={selectedTemplate ? "light" : "default"}
+                    leftSection={<IconEdit size={16} />}
+                    onClick={() => openTemplateModal(vakantie.id)}
                     disabled={regelingTemplates.length === 0}
-                    searchable={false}
-                  />
+                  >
+                    {selectedTemplate ? "Wijzig regeling" : "Selecteer regeling"}
+                  </Button>
                 </Group>
                 
                 {selectedTemplate && (
@@ -351,6 +410,21 @@ export const VakantiesStep = React.forwardRef<VakantiesStepHandle, VakantiesStep
             </Card>
           )}
         </Stack>
+
+        <RegelingTemplateSelectModal
+          opened={modal.isOpen}
+          onClose={modal.close}
+          onSelect={modal.handleSelect}
+          templates={regelingTemplates}
+          selectedTemplateId={modal.selectedTemplateId}
+          title="Selecteer een vakantieregeling"
+          loading={false}
+          processTemplateText={(template) => {
+            const vakantie = vakanties.find(v => v.id === activeVakantieId)
+            return vakantie ? getProcessedTemplateText(template, vakantie) : template.templateText
+          }}
+          emptyMessage="Geen vakantieregeling templates beschikbaar"
+        />
       </Container>
     )
   }

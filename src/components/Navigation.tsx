@@ -6,11 +6,11 @@ export function Navigation() {
   const location = useLocation()
 
   const links = [
-    { label: 'Home', icon: IconHome, to: '/' },
+    // { label: 'Home', icon: IconHome, to: '/' },
     { label: 'Dossiers', icon: IconFolder, to: '/dossiers' },
     { label: 'Contacten', icon: IconUsers, to: '/contacten' },
-    { label: 'Over Ons', icon: IconInfoCircle, to: '/about' },
-    { label: 'Contact', icon: IconPhone, to: '/contact' },
+    // { label: 'Over Ons', icon: IconInfoCircle, to: '/about' },
+    // { label: 'Contact', icon: IconPhone, to: '/contact' },
   ]
 
   return (
