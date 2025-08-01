@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { RegelingTemplate } from '../components/RegelingTemplateSelectModal'
+import { RegelingTemplate } from '../components/ZorgRegelingen/RegelingTemplateSelectModal'
 
 interface UseRegelingTemplateModalOptions {
   onSelect?: (template: RegelingTemplate) => void

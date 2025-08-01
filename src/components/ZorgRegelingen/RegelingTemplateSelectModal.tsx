@@ -11,11 +11,9 @@ import {
   Loader,
   Alert,
   Grid,
-  Badge,
-  Divider
 } from '@mantine/core'
 import { IconSearch, IconCheck } from '@tabler/icons-react'
-import { processTemplateText, TemplateContext } from '../utils/templateProcessor'
+import { processTemplateText, TemplateContext } from '../../utils/templateProcessor'
 
 export interface RegelingTemplate {
   id: number

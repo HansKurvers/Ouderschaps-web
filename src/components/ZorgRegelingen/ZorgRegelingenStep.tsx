@@ -16,14 +16,14 @@ import {
 import { notifications } from '@mantine/notifications'
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react'
 import { RegelingTemplateSelectModal } from './RegelingTemplateSelectModal'
-import { useRegelingTemplateModal } from '../hooks/useRegelingTemplateModal'
-import { zorgService } from '../services/zorg.service'
+import { useRegelingTemplateModal } from '../../hooks/useRegelingTemplateModal'
+import { zorgService } from '../../services/zorg.service'
 import { 
   processTemplateText, 
   createDutchPluralReplacements, 
   formatDutchNameList,
   TemplateContext
-} from '../utils/templateProcessor'
+} from '../../utils/templateProcessor'
 
 export interface ZorgSituatie {
   id: number
@@ -498,14 +498,12 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
 
       // Prevent duplicate saves
       if (isSaving) {
-        console.log('Save already in progress, skipping duplicate save')
         return
       }
 
       // Prevent rapid successive saves (within 1 second)
       const now = Date.now()
       if (now - lastSaveTimeRef.current < 1000) {
-        console.log('Save called too quickly, skipping to prevent duplicate')
         return
       }
 
