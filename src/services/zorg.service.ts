@@ -33,7 +33,8 @@ export interface ZorgRegelingResponse {
 class ZorgService {
   async getZorgRegelingen(dossierId: string, zorgCategorieId?: number): Promise<ZorgRegelingResponse[]> {
     const params = zorgCategorieId ? { zorgCategorieId } : undefined
-    return apiService.get<ZorgRegelingResponse[]>(`/api/dossiers/${dossierId}/zorg`, params)
+    const result = await apiService.get<ZorgRegelingResponse[]>(`/api/dossiers/${dossierId}/zorg`, params)
+    return result
   }
 
   async createZorgRegeling(dossierId: string, data: ZorgRegeling): Promise<ZorgRegelingResponse> {

@@ -139,7 +139,15 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
         setLoading(true)
         
         // Load situaties (vakanties/feestdagen)
-        const situatiesResponse = await fetch(`${API_URL}${situatiesEndpoint}`, {
+        // Ensure the endpoint includes the zorgCategorieId parameter
+        let endpoint = situatiesEndpoint
+        if (!endpoint.includes('zorgCategoryId=')) {
+          endpoint = endpoint.includes('?') 
+            ? `${endpoint}&zorgCategoryId=${zorgCategorieId}`
+            : `${endpoint}?zorgCategoryId=${zorgCategorieId}`
+        }
+        
+        const situatiesResponse = await fetch(`${API_URL}${endpoint}`, {
           headers: {
             'Content-Type': 'application/json',
             'x-user-id': '1'
@@ -250,14 +258,15 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
       try {
         const existingZorgRegelingen = await zorgService.getZorgRegelingen(dossierId, zorgCategorieId)
         
-        
         if (existingZorgRegelingen.length > 0) {
           const mappedRegelingen = existingZorgRegelingen.map((zorgRecord) => {
             const situatieId = zorgRecord.zorgSituatie?.id || zorgRecord.zorgSituatieId
+            const recordCategorieId = zorgRecord.zorgCategorieId || zorgRecord.zorgCategorie?.id || zorgRecord.zorgSituatie?.zorgCategorieId
             
-            // Check if this is a custom regeling
-            if (situatieId === 15 && zorgRecord.situatieAnders) {
-              // Custom regeling
+            
+            // Check if this is a custom regeling for the current category
+            if (situatieId === 15 && zorgRecord.situatieAnders && templateType !== 'Vakantie' && recordCategorieId === zorgCategorieId) {
+              // Custom regeling for current category (skip for Vakantie template type)
               return {
                 situatieId: 15,
                 regelingTemplateId: null, // Will try to match template later
@@ -266,8 +275,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 customNaam: zorgRecord.situatieAnders,
                 tempId: Date.now() + Math.random() // Unique tempId for existing custom
               }
-            } else {
-              // Normal regeling
+            } else if ((situatieId !== 15 || templateType === 'Vakantie') && recordCategorieId === zorgCategorieId) {
+              // Normal regeling for current category
               let templateId = null
               const matchingTemplate = regelingTemplates.find(template => {
                 const situatie = situaties.find(s => s.id === situatieId)
@@ -284,7 +293,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 overeenkomst: zorgRecord.overeenkomst
               }
             }
-          }).filter((regeling) => regeling.situatieId)
+            return null
+          }).filter((regeling): regeling is NonNullable<typeof regeling> => regeling !== null && regeling.situatieId !== undefined)
           
           
           // Update zorgRegelingen with existing data
@@ -294,8 +304,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             
             // Then update normal regelingen
             const updated = prev.map(regeling => {
-              if (regeling.situatieId !== 15) {
-                const existing = mappedRegelingen.find((m) => m.situatieId === regeling.situatieId)
+              if (regeling && regeling.situatieId !== 15) {
+                const existing = mappedRegelingen.find((m) => m && m.situatieId === regeling.situatieId)
                 if (existing) {
                   return {
                     ...regeling,
@@ -368,8 +378,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           const situatie = situaties.find(s => s.id === regeling.situatieId)
           const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
           
-          if (regeling.situatieId === 15) {
-            // Custom regeling
+          if (regeling.situatieId === 15 && templateType !== 'Vakantie') {
+            // Custom regeling (skip for Vakantie template type)
             if (regeling.customNaam && (regeling.regelingTemplateId || regeling.overeenkomst)) {
               const template = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
               const overeenkomstText = template 
@@ -523,8 +533,8 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
             )
           })}
           
-          {/* Custom regelingen */}
-          {zorgRegelingen
+          {/* Custom regelingen - only show for non-vacation categories */}
+          {templateType !== 'Vakantie' && zorgRegelingen
             .filter(r => r.situatieId === 15)
             .map(regeling => {
               const selectedTemplate = regelingTemplates.find(t => t.id === regeling.regelingTemplateId)
@@ -579,14 +589,16 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
               )
             })}
           
-          {/* Add new custom regeling button */}
-          <Button
-            variant="default"
-            leftSection={<IconPlus size={16} />}
-            onClick={addCustomRegeling}
-          >
-            Nieuwe regeling toevoegen
-          </Button>
+          {/* Add new custom regeling button - only show for non-vacation categories */}
+          {templateType !== 'Vakantie' && (
+            <Button
+              variant="default"
+              leftSection={<IconPlus size={16} />}
+              onClick={addCustomRegeling}
+            >
+              Nieuwe regeling toevoegen
+            </Button>
+          )}
           
           {situaties.length === 0 && zorgRegelingen.filter(r => r.situatieId === 15).length === 0 && (
             <Card withBorder p="xl">
