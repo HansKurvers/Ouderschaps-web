@@ -75,7 +75,7 @@ export interface ZorgRegelingenStepHandle {
   saveData: () => Promise<void>
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = import.meta.env.VITE_API_URL || 'https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net'
 
 export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, ZorgRegelingenStepProps>(
   ({ 

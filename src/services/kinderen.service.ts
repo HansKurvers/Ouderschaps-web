@@ -1,6 +1,6 @@
 import { ApiResponse, DossierKind, AddKindData } from '../types/api.types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net'
 
 export const kinderenService = {
   async getDossierKinderen(dossierId: string): Promise<DossierKind[]> {
