@@ -1,5 +1,5 @@
 import { NavLink } from '@mantine/core'
-import { IconHome, IconInfoCircle, IconPhone, IconFolder, IconUsers } from '@tabler/icons-react'
+import { IconFolder, IconUsers } from '@tabler/icons-react'
 import { Link, useLocation } from 'react-router-dom'
 
 export function Navigation() {
