@@ -769,7 +769,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                     </ActionIcon>
                   </Group>
                   
-                  {regeling.customNaam && templateType === 'Algemeen' && (
+                  {regeling.customNaam  && (
                     <Stack gap="md">
                       <SegmentedControl
                         value={regeling.useCustomText ? 'custom' : 'template'}
