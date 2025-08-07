@@ -12,6 +12,7 @@ interface PartijSelectStepProps {
   partij2: PartijData
   rollen: Rol[]
   onSelectPartij: (partijNumber: 1 | 2) => void
+  onEditPartij?: (partijNumber: 1 | 2) => void
   getVolledigeNaam: (persoon: Persoon) => string
 }
 
@@ -19,7 +20,8 @@ export function PartijSelectStep({
   partij1, 
   partij2, 
   rollen, 
-  onSelectPartij, 
+  onSelectPartij,
+  onEditPartij, 
   getVolledigeNaam 
 }: PartijSelectStepProps) {
   return (
@@ -32,6 +34,7 @@ export function PartijSelectStep({
         rolId={partij1.rolId}
         rollen={rollen}
         onSelect={() => onSelectPartij(1)}
+        onEdit={onEditPartij ? () => onEditPartij(1) : undefined}
         getVolledigeNaam={getVolledigeNaam}
       />
 
@@ -41,6 +44,7 @@ export function PartijSelectStep({
         rolId={partij2.rolId}
         rollen={rollen}
         onSelect={() => onSelectPartij(2)}
+        onEdit={onEditPartij ? () => onEditPartij(2) : undefined}
         getVolledigeNaam={getVolledigeNaam}
       />
     </Stack>

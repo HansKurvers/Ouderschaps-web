@@ -1,5 +1,5 @@
 import { Card, Group, Text, Badge, Button } from '@mantine/core'
-import { IconUserPlus } from '@tabler/icons-react'
+import { IconUserPlus, IconEdit, IconSwitchHorizontal } from '@tabler/icons-react'
 import { Persoon, Rol } from '../types/api.types'
 
 const PARTIJ_COLORS = {
@@ -13,6 +13,7 @@ interface PartijCardProps {
   rolId: string
   rollen: Rol[]
   onSelect: () => void
+  onEdit?: () => void
   getVolledigeNaam: (persoon: Persoon) => string
 }
 
@@ -21,7 +22,8 @@ export function PartijCard({
   persoon, 
   rolId, 
   rollen, 
-  onSelect, 
+  onSelect,
+  onEdit, 
   getVolledigeNaam 
 }: PartijCardProps) {
   const partijLabel = `Partij ${partijNumber}`
@@ -43,9 +45,26 @@ export function PartijCard({
               <Text size="sm" c="dimmed">{persoon.email || 'Geen email'}</Text>
               <Badge mt="xs" color={partijColor} variant="light">{rolNaam}</Badge>
             </div>
-            <Button variant="light" color={partijColor} onClick={onSelect}>
-              Wijzig persoon
-            </Button>
+            <Group gap="xs">
+              {onEdit && (
+                <Button 
+                  variant="light" 
+                  size="sm"
+                  leftSection={<IconEdit size={16} />}
+                  onClick={onEdit}
+                >
+                  Bewerk
+                </Button>
+              )}
+              <Button 
+                variant="subtle" 
+                size="sm"
+                leftSection={<IconSwitchHorizontal size={16} />}
+                onClick={onSelect}
+              >
+                Wijzig persoon
+              </Button>
+            </Group>
           </Group>
         </Card>
       ) : (

@@ -59,6 +59,8 @@ export function DossierFormPage() {
   const [rollen, setRollen] = useState<Rol[]>([])
   const [newContactModalOpen, setNewContactModalOpen] = useState(false)
   const [newContactPartij, setNewContactPartij] = useState<1 | 2 | null>(null)
+  const [editContactModalOpen, setEditContactModalOpen] = useState(false)
+  const [editingPartij, setEditingPartij] = useState<1 | 2 | null>(null)
   
   const omgangsregelingRef = useRef<OmgangsregelingStepHandle>(null)
   const vakantiesRef = useRef<VakantiesStepHandle>(null)
@@ -192,6 +194,24 @@ export function DossierFormPage() {
     setNewContactPartij(null)
     setSelectingPartij(null)
     setNewContactModalOpen(false)
+  }
+
+  const handleEditPartij = (partijNumber: 1 | 2) => {
+    setEditingPartij(partijNumber)
+    setEditContactModalOpen(true)
+  }
+
+  const handleEditContactSuccess = (persoon: Persoon) => {
+    // Contact updated
+    if (editingPartij === 1) {
+      setPartij1({ ...partij1, persoon })
+    } else if (editingPartij === 2) {
+      setPartij2({ ...partij2, persoon })
+    }
+    
+    // Reset states and close modal
+    setEditingPartij(null)
+    setEditContactModalOpen(false)
   }
 
 
@@ -586,6 +606,7 @@ export function DossierFormPage() {
               setSelectingPartij(partijNumber)
               setSelectModalOpen(true)
             }}
+            onEditPartij={handleEditPartij}
             getVolledigeNaam={getVolledigeNaam}
           />
         )}
@@ -725,6 +746,18 @@ export function DossierFormPage() {
         onSuccess={handleNewContactSuccess}
         rolId={newContactPartij === 1 ? '1' : newContactPartij === 2 ? '2' : '1'}
         title={newContactPartij ? `Nieuw contact toevoegen voor ${newContactPartij === 1 ? 'Partij 1' : 'Partij 2'}` : 'Nieuw contact toevoegen'}
+      />
+
+      <ContactFormModal
+        opened={editContactModalOpen}
+        onClose={() => {
+          setEditContactModalOpen(false)
+          setEditingPartij(null)
+        }}
+        onSuccess={handleEditContactSuccess}
+        persoon={(editingPartij === 1 ? partij1.persoon : editingPartij === 2 ? partij2.persoon : null) || undefined}
+        rolId={editingPartij === 1 ? partij1.rolId : editingPartij === 2 ? partij2.rolId : '1'}
+        title={editingPartij ? `Contact bewerken voor ${editingPartij === 1 ? 'Partij 1' : 'Partij 2'}` : 'Contact bewerken'}
       />
     </Container>
   )
