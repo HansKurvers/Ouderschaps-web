@@ -1,6 +1,6 @@
-import { Stack, Title, Card, Text, Table, Badge, Group, Loader, ScrollArea } from '@mantine/core'
+import { Stack, Title, Card, Text, Table, Badge, Group, Loader, ScrollArea, Button } from '@mantine/core'
 import { Persoon, DossierKind } from '../types/api.types'
-import { IconUser, IconUsers, IconCalendar, IconPhone, IconMail, IconClock, IconBeach, IconGift, IconStar, IconChecklist, IconCheckupList } from '@tabler/icons-react'
+import { IconUser, IconUsers, IconCalendar, IconPhone, IconMail, IconClock, IconBeach, IconGift, IconStar, IconChecklist, IconCheckupList, IconDownload } from '@tabler/icons-react'
 import { useState, useEffect } from 'react'
 import { omgangService } from '../services/omgang.service'
 import { zorgService } from '../services/zorg.service'
@@ -33,6 +33,7 @@ export function DossierOverviewStep({
   const [dagen, setDagen] = useState<any[]>([])
   const [dagdelen, setDagdelen] = useState<any[]>([])
   const [weekRegelingen, setWeekRegelingen] = useState<any[]>([])
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (dossierId) {
@@ -83,10 +84,72 @@ export function DossierOverviewStep({
     return date.toLocaleDateString('nl-NL')
   }
 
+  const handleDownloadDocument = async () => {
+    if (!dossierId) return
+
+    setDownloading(true)
+    try {
+      const documentGeneratorUrl = import.meta.env.VITE_DOCUMENT_GENERATOR_URL
+      if (!documentGeneratorUrl) {
+        throw new Error('Document generator URL not configured')
+      }
+
+      const response = await fetch(
+        documentGeneratorUrl,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ DossierId: dossierId })
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to generate document')
+      }
+
+      // Get the filename from the Content-Disposition header if available
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = `ouderschapsplan_${dossierNummer}.docx`
+      if (contentDisposition) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition)
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '')
+        }
+      }
+
+      // Download the file
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error downloading document:', error)
+      // Could add a notification here if needed
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <Stack>
-      <Title order={3}>Dossier Overzicht</Title>
+      <Group justify="space-between" mb="md">
+        <Title order={3}>Dossier Overzicht</Title>
+        <Button 
+          leftSection={<IconDownload size={20} />}
+          onClick={handleDownloadDocument}
+          loading={downloading}
+          disabled={!dossierId}
+        >
+          Download Ouderschapsplan
+        </Button>
+      </Group>
       
       {/* Dossier Summary Card */}
       <Card withBorder p="md" shadow="sm">
