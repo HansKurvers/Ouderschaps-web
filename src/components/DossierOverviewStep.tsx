@@ -139,10 +139,59 @@ export function DossierOverviewStep({
       <Group justify="space-between" mb="md">
         <Title order={3}>Dossier Overzicht</Title>
         <Button 
-          leftSection={<IconDownload size={20} />}
+          leftSection={<IconDownload size={20} className="download-icon" />}
           onClick={handleDownloadDocument}
           loading={downloading}
           disabled={!dossierId}
+          variant="gradient"
+          gradient={{ from: 'blue', to: 'cyan', deg: 45 }}
+          size="md"
+          radius="md"
+          styles={{
+            root: {
+              transition: 'all 0.2s ease',
+              transform: 'scale(1)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              position: 'relative',
+              overflow: 'hidden',
+              '&:hover:not(:disabled)': {
+                transform: 'scale(1.02)',
+                boxShadow: '0 4px 16px rgba(0, 123, 255, 0.25)',
+              },
+              '&:active:not(:disabled)': {
+                transform: 'scale(0.98)',
+              },
+              '&:disabled': {
+                transform: 'scale(1)',
+                opacity: 0.6,
+              },
+              '&:not(:disabled):not(:hover)': {
+                animation: dossierId ? 'subtle-glow 4s ease-in-out infinite' : 'none',
+              },
+              '@keyframes subtle-glow': {
+                '0%, 100%': {
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                },
+                '50%': {
+                  boxShadow: '0 2px 12px rgba(0, 123, 255, 0.2), 0 0 0 1px rgba(0, 123, 255, 0.05)',
+                }
+              }
+            },
+            section: {
+              transition: 'transform 0.2s ease',
+            },
+            inner: {
+              '&:hover': {
+                '& .download-icon': {
+                  transform: 'translateY(-1px) scale(1.05)',
+                }
+              }
+            },
+            label: {
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+            }
+          }}
         >
           Download Ouderschapsplan
         </Button>
