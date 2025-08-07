@@ -34,6 +34,7 @@ jobs:
           ###### End of Repository/Build Configurations ######
         env:
           VITE_API_URL: https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net
+          VITE_DOCUMENT_GENERATOR_URL: ${{ secrets.VITE_DOCUMENT_GENERATOR_URL }}
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
