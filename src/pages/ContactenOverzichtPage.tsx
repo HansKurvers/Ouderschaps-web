@@ -223,11 +223,7 @@ export function ContactenOverzichtPage() {
     try {
       await persoonService.deletePersoon(persoonId)
       
-      notifications.show({
-        title: 'Contact verwijderd',
-        message: `${getVolledigeNaam(persoonToDelete)} is succesvol verwijderd`,
-        color: 'green'
-      })
+      // Removed notification - action is already visible in UI
       
       // Reload de personen lijst
       await loadPersonen()

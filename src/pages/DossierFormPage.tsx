@@ -356,11 +356,7 @@ export function DossierFormPage() {
         
         if (result.success && result.dossierId) {
           setDossierId(result.dossierId)
-          notifications.show({
-            title: 'Dossier aangemaakt',
-            message: 'Je kunt nu kinderen toevoegen aan het dossier',
-            color: 'green'
-          })
+          // Removed notification - intermediate step, not critical
           setActive((current) => current + 1)
         } else {
           notifications.show({

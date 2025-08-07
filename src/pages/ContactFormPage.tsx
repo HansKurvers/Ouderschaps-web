@@ -123,25 +123,14 @@ export function ContactFormPage() {
         geboorteDatum: values.geboortedatum instanceof Date ? values.geboortedatum.toISOString().split('T')[0] : values.geboortedatum || undefined,
       }
 
-      let resultPersoon: Persoon
-      
       if (isEdit && persoonId) {
         // Update bestaande persoon
-        resultPersoon = await persoonService.updatePersoon(persoonId, persoonData)
-        notifications.show({
-          title: 'Contact bijgewerkt!',
-          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
-          color: 'green',
-        })
+        await persoonService.updatePersoon(persoonId, persoonData)
+        // Removed notification - too frequent for contact updates
       } else {
         // Maak nieuwe persoon aan
-        resultPersoon = await persoonService.createPersoon(persoonData)
-        const selectedRol = rollen.find(r => String(r.id) === values.rolId)
-        notifications.show({
-          title: 'Contact aangemaakt!',
-          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is toegevoegd als ${selectedRol?.naam || 'contact'}`,
-          color: 'green',
-        })
+        await persoonService.createPersoon(persoonData)
+        // Removed notification - too frequent for contact creation
       }
       
       // Navigeer terug naar overzicht

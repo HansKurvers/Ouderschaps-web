@@ -1,14 +1,9 @@
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core'
-import { notifications } from '@mantine/notifications'
 import { Link } from 'react-router-dom'
 
 export function HomePage() {
   const handleClick = () => {
-    notifications.show({
-      title: 'Welkom!',
-      message: 'Bedankt voor het bezoeken van onze website',
-      color: 'blue',
-    })
+    // Test notification removed - not needed in production
   }
 
   return (

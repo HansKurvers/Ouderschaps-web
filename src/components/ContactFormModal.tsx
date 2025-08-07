@@ -129,20 +129,12 @@ export function ContactFormModal({
         const persoonId = persoon.persoonId || persoon.id || persoon._id
         resultPersoon = await persoonService.updatePersoon(String(persoonId), persoonData)
         
-        notifications.show({
-          title: 'Contact bijgewerkt!',
-          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
-          color: 'green',
-        })
+        // Removed notification - too frequent for contact updates
       } else {
         // Create new person
         resultPersoon = await persoonService.createPersoon(persoonData)
         
-        notifications.show({
-          title: 'Contact aangemaakt!',
-          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol toegevoegd`,
-          color: 'green',
-        })
+        // Removed notification - too frequent for contact creation
       }
       // Call success callback with the new person
       onSuccess(resultPersoon)

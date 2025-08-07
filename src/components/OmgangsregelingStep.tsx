@@ -223,11 +223,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
 
   const addWeekTabel = () => {
     if (!dagen || dagen.length === 0 || !dagdelen || dagdelen.length === 0) {
-      notifications.show({
-        title: 'Even geduld',
-        message: 'Data wordt nog geladen...',
-        color: 'yellow'
-      })
+      // Removed notification - not critical information
       return
     }
     setWeekTabellen([...weekTabellen, createEmptyWeekTabel()])
@@ -431,11 +427,7 @@ export const OmgangsregelingStep = React.forwardRef<OmgangsregelingStepHandle, O
         }
       }
 
-      notifications.show({
-        title: 'Succes',
-        message: 'Omgangsregeling opgeslagen',
-        color: 'green'
-      })
+  
     } catch (error) {
       console.error('Error saving omgang:', error)
       notifications.show({

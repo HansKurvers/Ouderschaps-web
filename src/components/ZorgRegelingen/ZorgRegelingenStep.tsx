@@ -622,11 +622,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
           }
         }
         
-        notifications.show({
-          title: 'Succes',
-          message: `${title} regelingen opgeslagen`,
-          color: 'green'
-        })
+        // Removed notification - auto-save is too frequent
       } catch (error: any) {
         console.error('Error saving zorg regelingen:', error)
         const errorMessage = error?.response?.data?.message || error?.message || 'Onbekende fout'
