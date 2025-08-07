@@ -1,6 +1,6 @@
 export interface ContactFormValues {
   roepnaam?: string
-  voornamen: string
+  voornamen?: string
   tussenvoegsel?: string
   achternaam: string
   email?: string
@@ -15,10 +15,16 @@ export interface ContactFormValues {
 }
 
 export const contactFormValidation = {
-  voornamen: (value: string) => {
-    if (!value || value.trim().length === 0) {
-      return 'Voornamen is verplicht'
+  roepnaam: (value: string | undefined) => {
+    if (!value) return null // Roepnaam is optioneel
+    if (value.trim().length < 2) {
+      return 'Roepnaam moet minimaal 2 karakters bevatten'
     }
+    return null
+  },
+
+  voornamen: (value: string | undefined) => {
+    if (!value) return null // Voornamen is nu optioneel
     if (value.trim().length < 2) {
       return 'Voornamen moet minimaal 2 karakters bevatten'
     }
@@ -105,6 +111,7 @@ export const contactFormValidation = {
 // Helper functie om validatie regels te krijgen voor een specifiek formulier
 export function getContactFormValidation(requireRole: boolean = false) {
   return {
+    roepnaam: contactFormValidation.roepnaam,
     voornamen: contactFormValidation.voornamen,
     achternaam: contactFormValidation.achternaam,
     email: contactFormValidation.email,

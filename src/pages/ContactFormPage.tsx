@@ -36,6 +36,7 @@ export function ContactFormPage() {
 
   const form = useForm<ContactFormValues>({
     initialValues: {
+      roepnaam: '',
       voornamen: '',
       tussenvoegsel: '',
       achternaam: '',
@@ -45,7 +46,6 @@ export function ContactFormPage() {
       postcode: '',
       plaats: '',
       rolId: '',
-      roepnaam: '',
       opmerking: '',
       geboortedatum: null,
       geslacht: ''
@@ -81,6 +81,7 @@ export function ContactFormPage() {
     try {
       const persoon = await persoonService.getPersoon(id)
       form.setValues({
+        roepnaam: persoon.roepnaam || '',
         voornamen: persoon.voornamen || '',
         tussenvoegsel: persoon.tussenvoegsel || '',
         achternaam: persoon.achternaam,
@@ -108,9 +109,9 @@ export function ContactFormPage() {
       setSubmitting(true)
       
       // Maak persoon data object
-      // Maak persoon data object
       const persoonData: Partial<Persoon> = {
-        voornamen: values.voornamen,
+        roepnaam: values.roepnaam || undefined,
+        voornamen: values.voornamen || undefined,
         tussenvoegsel: values.tussenvoegsel || undefined,
         achternaam: values.achternaam,
         email: values.email || undefined,
@@ -129,7 +130,7 @@ export function ContactFormPage() {
         resultPersoon = await persoonService.updatePersoon(persoonId, persoonData)
         notifications.show({
           title: 'Contact bijgewerkt!',
-          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
+          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
           color: 'green',
         })
       } else {
@@ -138,7 +139,7 @@ export function ContactFormPage() {
         const selectedRol = rollen.find(r => String(r.id) === values.rolId)
         notifications.show({
           title: 'Contact aangemaakt!',
-          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is toegevoegd als ${selectedRol?.naam || 'contact'}`,
+          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is toegevoegd als ${selectedRol?.naam || 'contact'}`,
           color: 'green',
         })
       }
@@ -186,11 +187,11 @@ export function ContactFormPage() {
             <Divider label="Persoonlijke gegevens" labelPosition="center" />
             
             <Grid>
-              <Grid.Col span={{ base: 12, md: 6 }}>
+              <Grid.Col span={{ base: 12, md: 4 }}>
                 <TextInput
-                  label="Voornamen"
-                  placeholder="Jan Willem"
-                  {...form.getInputProps('voornamen')}
+                  label="Roepnaam"
+                  placeholder="Jan"
+                  {...form.getInputProps('roepnaam')}
                 />
               </Grid.Col>
               
@@ -202,7 +203,7 @@ export function ContactFormPage() {
                 />
               </Grid.Col>
               
-              <Grid.Col span={{ base: 12, md: 4 }}>
+              <Grid.Col span={{ base: 12, md: 6 }}>
                 <TextInput
                   label="Achternaam"
                   placeholder="Berg"
@@ -211,6 +212,12 @@ export function ContactFormPage() {
                 />
               </Grid.Col>
             </Grid>
+
+            <TextInput
+              label="Volledige voornamen"
+              placeholder="Jan Willem"
+              {...form.getInputProps('voornamen')}
+            />
 
             <Grid>
               <Grid.Col span={{ base: 12, md: 6 }}>

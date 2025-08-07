@@ -13,17 +13,18 @@ import { IconUserPlus, IconDeviceFloppy } from '@tabler/icons-react'
 import { Rol } from '../types/api.types'
 
 export interface ContactFormValues {
-  voornamen: string
-  tussenvoegsel: string
+  roepnaam?: string
+  voornamen?: string
+  tussenvoegsel?: string
   achternaam: string
-  email: string
-  telefoon: string
-  adres: string
-  postcode: string
-  plaats: string
-  rolId: string
-  geboortedatum: string | Date | null
-  geslacht: string
+  email?: string
+  telefoon?: string
+  adres?: string
+  postcode?: string
+  plaats?: string
+  rolId?: string
+  geboortedatum?: string | Date | null
+  geslacht?: string
 }
 
 interface ContactFormProps {
@@ -56,12 +57,11 @@ export function ContactForm({
     <form onSubmit={handleSubmit}>
       <Stack>
         <Grid>
-          <Grid.Col span={5}>
+          <Grid.Col span={4}>
             <TextInput
-              required
-              label="Voornamen"
-              placeholder="Jan Willem"
-              {...form.getInputProps('voornamen')}
+              label="Roepnaam"
+              placeholder="Jan"
+              {...form.getInputProps('roepnaam')}
             />
           </Grid.Col>
           <Grid.Col span={2}>
@@ -71,7 +71,7 @@ export function ContactForm({
               {...form.getInputProps('tussenvoegsel')}
             />
           </Grid.Col>
-          <Grid.Col span={5}>
+          <Grid.Col span={6}>
             <TextInput
               required
               label="Achternaam"
@@ -80,6 +80,12 @@ export function ContactForm({
             />
           </Grid.Col>
         </Grid>
+
+        <TextInput
+          label="Volledige voornamen"
+          placeholder="Jan Willem"
+          {...form.getInputProps('voornamen')}
+        />
 
         <Divider label="Persoonlijke gegevens" />
         

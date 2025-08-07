@@ -34,6 +34,7 @@ export function ContactFormModal({
 
   const form = useForm<ContactFormValues>({
     initialValues: {
+      roepnaam: '',
       voornamen: '',
       tussenvoegsel: '',
       achternaam: '',
@@ -64,6 +65,7 @@ export function ContactFormModal({
         if (persoon) {
           // Populate form with existing person data
           form.setValues({
+            roepnaam: persoon.roepnaam || '',
             voornamen: persoon.voornamen || '',
             tussenvoegsel: persoon.tussenvoegsel || '',
             achternaam: persoon.achternaam || '',
@@ -107,7 +109,8 @@ export function ContactFormModal({
       
       // Maak persoon data object
       const persoonData: Partial<Persoon> = {
-        voornamen: values.voornamen,
+        roepnaam: values.roepnaam || undefined,
+        voornamen: values.voornamen || undefined,
         tussenvoegsel: values.tussenvoegsel || undefined,
         achternaam: values.achternaam,
         email: values.email || undefined,
@@ -128,7 +131,7 @@ export function ContactFormModal({
         
         notifications.show({
           title: 'Contact bijgewerkt!',
-          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
+          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol bijgewerkt`,
           color: 'green',
         })
       } else {
@@ -137,7 +140,7 @@ export function ContactFormModal({
         
         notifications.show({
           title: 'Contact aangemaakt!',
-          message: `${resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol toegevoegd`,
+          message: `${resultPersoon.roepnaam || resultPersoon.voornamen || ''} ${resultPersoon.achternaam} is succesvol toegevoegd`,
           color: 'green',
         })
       }
