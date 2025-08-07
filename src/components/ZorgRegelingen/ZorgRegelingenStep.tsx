@@ -369,7 +369,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 situatieId: situatieId as number,
                 regelingTemplateId: templateId,
                 zorgId: zorgRecord.id,
-                overeenkomst: zorgRecord.overeenkomst
+                overeenkomst: zorgRecord.overeenkomst  // Always preserve the existing overeenkomst
               }
             }
             return null
@@ -564,9 +564,21 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                 )
               )
             }
-          } else if (regeling.regelingTemplateId && situatie && template) {
-            // Normal regeling
-            const overeenkomstText = getProcessedTemplateText(template, situatie)
+          } else if ((regeling.regelingTemplateId || regeling.overeenkomst) && situatie) {
+            // Normal regeling - save if it has a template OR existing overeenkomst
+            let overeenkomstText = ''
+            
+            if (regeling.regelingTemplateId && template) {
+              // Use template if available
+              overeenkomstText = getProcessedTemplateText(template, situatie)
+            } else if (regeling.overeenkomst) {
+              // Use existing overeenkomst if no template
+              overeenkomstText = regeling.overeenkomst
+            }
+            
+            if (!overeenkomstText) {
+              continue // Skip if no text to save
+            }
             
             // For BeslissingenStep, use the category from the situatie
             const categoryId = zorgCategorieId === -1 
@@ -595,8 +607,9 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                   : r
               )
             )
-          } else if (regeling.zorgId && !regeling.regelingTemplateId) {
-            // Delete if no template selected
+          } else if (regeling.zorgId && !regeling.regelingTemplateId && !regeling.overeenkomst) {
+            // Only delete if no template selected AND no existing overeenkomst
+            // This prevents deletion of existing regelingen that couldn't be matched to a template
             await zorgService.deleteZorgRegeling(dossierId, regeling.zorgId)
             
             setZorgRegelingen(prev =>

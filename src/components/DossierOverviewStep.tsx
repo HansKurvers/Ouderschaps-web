@@ -1,6 +1,6 @@
 import { Stack, Title, Card, Text, Table, Badge, Group, Loader, ScrollArea } from '@mantine/core'
 import { Persoon, DossierKind } from '../types/api.types'
-import { IconUser, IconUsers, IconCalendar, IconPhone, IconMail, IconClock, IconBeach, IconGift, IconStar } from '@tabler/icons-react'
+import { IconUser, IconUsers, IconCalendar, IconPhone, IconMail, IconClock, IconBeach, IconGift, IconStar, IconChecklist, IconCheckupList } from '@tabler/icons-react'
 import { useState, useEffect } from 'react'
 import { omgangService } from '../services/omgang.service'
 import { zorgService } from '../services/zorg.service'
@@ -335,7 +335,7 @@ export function DossierOverviewStep({
       {dossierId && (
         <Card withBorder p="md" shadow="sm">
           <Group mb="md">
-            <IconBeach size={20} />
+            <IconCheckupList size={20} />
             <Title order={4}>Zorg Regelingen</Title>
           </Group>
           {loading ? (
@@ -359,6 +359,7 @@ export function DossierOverviewStep({
                       {category === 'Vakanties' && <IconBeach size={16} />}
                       {category === 'Feestdagen' && <IconGift size={16} />}
                       {category === 'Bijzondere dagen' && <IconStar size={16} />}
+                      {category === 'Beslissingen' && <IconChecklist size={16} />}
                       <Text fw={600} size="sm">{category}</Text>
                     </Group>
                     <Table striped highlightOnHover>
