@@ -27,17 +27,15 @@ import { getVolledigeNaam } from '../utils/persoon.utils'
 type SortField = 'naam' | 'rol'
 type SortOrder = 'asc' | 'desc'
 
-interface PersoonWithDossiers extends Persoon {
-  dossiers?: string[]
+interface DossierInfo {
+  id: string
+  nummer: string
 }
 
-// Mock data voor nu, later vervangen met echte dossier partijen data
-const mockRollen: Record<string, string> = {
-  '1': 'Partij 1',
-  '2': 'Partij 2',
-  '3': 'Advocaat',
-  '4': 'Mediator'
+interface PersoonWithDossiers extends Persoon {
+  dossiers?: DossierInfo[]
 }
+
 
 export function ContactenOverzichtPage() {
   const navigate = useNavigate()
@@ -99,7 +97,7 @@ export function ContactenOverzichtPage() {
       const personenWithDossiers: PersoonWithDossiers[] = []
       
       // Create a map to track dossiers per person
-      const persoonDossiersMap = new Map<string, Set<string>>()
+      const persoonDossiersMap = new Map<string, Set<DossierInfo>>()
       
       // For each dossier, get the parties and track which persons are in it
       for (const dossier of allDossiers) {
@@ -129,7 +127,10 @@ export function ContactenOverzichtPage() {
                 if (!persoonDossiersMap.has(persoonId)) {
                   persoonDossiersMap.set(persoonId, new Set())
                 }
-                persoonDossiersMap.get(persoonId)!.add(dossierNummer)
+                persoonDossiersMap.get(persoonId)!.add({
+                  id: String(dossierId),
+                  nummer: dossierNummer
+                })
               }
             }
           }
@@ -330,9 +331,16 @@ export function ContactenOverzichtPage() {
                 <Table.Td>
                   {persoon.dossiers && persoon.dossiers.length > 0 ? (
                     <Group gap="xs">
-                      {persoon.dossiers.slice(0, 3).map((dossierNummer) => (
-                        <Badge key={dossierNummer} size="sm" variant="dot" color="blue">
-                          {dossierNummer}
+                      {persoon.dossiers.slice(0, 3).map((dossier) => (
+                        <Badge 
+                          key={dossier.id} 
+                          size="sm" 
+                          variant="dot" 
+                          color="blue"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => navigate(`/dossiers/bewerk/${dossier.id}`)}
+                        >
+                          {dossier.nummer}
                         </Badge>
                       ))}
                       {persoon.dossiers.length > 3 && (
