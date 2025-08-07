@@ -89,11 +89,8 @@ export function DossierOverviewStep({
 
     setDownloading(true)
     try {
+      // Use environment variable if available, otherwise use the default URL
       const documentGeneratorUrl = import.meta.env.VITE_DOCUMENT_GENERATOR_URL
-      if (!documentGeneratorUrl) {
-        throw new Error('Document generator URL not configured')
-      }
-
       const response = await fetch(
         documentGeneratorUrl,
         {

@@ -10,12 +10,27 @@ import {
   Modal,
   Text,
   rem,
-  Box
+  Box,
+  Stack
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { IconTrash, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
+import { 
+  IconTrash, 
+  IconArrowLeft, 
+  IconArrowRight,
+  IconFileText,
+  IconUsers,
+  IconUser,
+  IconClock,
+  IconSettings,
+  IconClipboardCheck,
+  IconBeach,
+  IconGift,
+  IconStar,
+  IconChecklist
+} from '@tabler/icons-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRef } from 'react'
 import { dossierService } from '../services/dossier.service'
@@ -42,6 +57,95 @@ interface DossierFormValues {
   dossierNummer: string
 }
 
+interface RegelingenStepProps {
+  regelingenSubstep: number
+  setRegelingenSubstep: (step: number) => void
+  dossierId?: string
+  kinderen?: any[]
+  partij1: any
+  partij2: any
+  vakantiesRef: any
+  feestdagenRef: any
+  bijzondereDagenRef: any
+  beslissingenRef: any
+}
+
+function RegelingenStepWithSubsteps({
+  regelingenSubstep,
+  setRegelingenSubstep,
+  dossierId,
+  kinderen,
+  partij1,
+  partij2,
+  vakantiesRef,
+  feestdagenRef,
+  bijzondereDagenRef,
+  beslissingenRef
+}: RegelingenStepProps) {
+  const substeps = [
+    { label: 'Vakanties', description: 'Vakantie regelingen', icon: IconBeach },
+    { label: 'Feestdagen', description: 'Feestdag regelingen', icon: IconGift },
+    { label: 'Bijzonder', description: 'Bijzondere dagen', icon: IconStar },
+    { label: 'Beslissingen', description: 'Overige beslissingen', icon: IconChecklist }
+  ]
+
+  return (
+    <Stack>
+      <Title order={3}>Regelingen</Title>
+      <Stepper active={regelingenSubstep} onStepClick={setRegelingenSubstep} size="sm">
+        {substeps.map((step, index) => (
+          <Stepper.Step 
+            key={index} 
+            label={step.label} 
+            description={step.description}
+            icon={<step.icon size={18} />}
+          />
+        ))}
+      </Stepper>
+      
+      <Box mt="xl">
+        {regelingenSubstep === 0 && (
+          <VakantiesStep
+            ref={vakantiesRef}
+            dossierId={dossierId}
+            kinderen={kinderen}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+        {regelingenSubstep === 1 && (
+          <FeestdagenStep
+            ref={feestdagenRef}
+            dossierId={dossierId}
+            kinderen={kinderen}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+        {regelingenSubstep === 2 && (
+          <BijzondereDagenStep
+            ref={bijzondereDagenRef}
+            dossierId={dossierId}
+            kinderen={kinderen}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+        {regelingenSubstep === 3 && (
+          <BeslissingenStep
+            ref={beslissingenRef}
+            dossierId={dossierId}
+            kinderen={kinderen}
+            partij1={partij1}
+            partij2={partij2}
+          />
+        )}
+      </Box>
+      
+    </Stack>
+  )
+}
+
 // Feature flag: enable loading existing dossier data
 const ENABLE_DOSSIER_LOADING = true
 
@@ -52,6 +156,7 @@ export function DossierFormPage() {
   const isEdit = !!dossierId
   
   const [active, setActive] = useState(0)
+  const [regelingenSubstep, setRegelingenSubstep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [selectModalOpen, setSelectModalOpen] = useState(false)
@@ -228,12 +333,30 @@ export function DossierFormPage() {
       case 3:
         return true // Omgangsregeling step
       case 4:
-        return true // Vakanties step
+        return true // Regelingen step - always allow proceeding
       case 5:
         return true // Overview step
       default:
         return true
     }
+  }
+  
+  const canProceedFromCurrentStep = () => {
+    // When on Regelingen step, check if we can navigate to next substep or main step
+    if (active === 4) {
+      return regelingenSubstep < 3 || canProceed(active)
+    }
+    return canProceed(active)
+  }
+  
+  const canGoBack = () => {
+    // When on Regelingen step and not on first substep, can go back to previous substep
+    if (active === 4 && regelingenSubstep > 0) {
+      return true
+    }
+    // Otherwise check if we can go back to previous main step
+    const minStep = isEdit ? 1 : 0
+    return active > minStep
   }
 
   const handleSubmit = async () => {
@@ -324,19 +447,25 @@ export function DossierFormPage() {
   }
 
   const nextStep = async () => {
+    // Handle substep navigation within Regelingen step
+    if (active === 4 && regelingenSubstep < 3) {
+      setRegelingenSubstep(regelingenSubstep + 1)
+      return
+    }
+    
     // Save step data before moving to next step
     if (dossierId) {
       try {
         if (active === 3 && omgangsregelingRef.current) {
           await omgangsregelingRef.current.saveData()
-        } else if (active === 4 && vakantiesRef.current) {
-          await vakantiesRef.current.saveData()
-        } else if (active === 5 && feestdagenRef.current) {
-          await feestdagenRef.current.saveData()
-        } else if (active === 6 && bijzondereDagenRef.current) {
-          await bijzondereDagenRef.current.saveData()
-        } else if (active === 7 && beslissingenRef.current) {
-          await beslissingenRef.current.saveData()
+        }
+        // Save current substep data when on Regelingen step
+        if (active === 4) {
+          const refs = [vakantiesRef, feestdagenRef, bijzondereDagenRef, beslissingenRef]
+          const currentRef = refs[regelingenSubstep]?.current
+          if (currentRef) {
+            await currentRef.saveData()
+          }
         }
       } catch (error) {
         console.error('Error saving step data:', error)
@@ -393,16 +522,20 @@ export function DossierFormPage() {
         }
       }
       
-      // Save vakantie data when moving from step 4 to 5
-      if (active === 4 && dossierId && vakantiesRef.current) {
+      // Save all regelingen data when moving from step 4 (Regelingen) to step 5 (Controle)
+      if (active === 4 && dossierId) {
         try {
           setLoading(true)
-          await vakantiesRef.current.saveData()
+          // Save all regelingen substeps
+          if (vakantiesRef.current) await vakantiesRef.current.saveData()
+          if (feestdagenRef.current) await feestdagenRef.current.saveData()
+          if (bijzondereDagenRef.current) await bijzondereDagenRef.current.saveData()
+          if (beslissingenRef.current) await beslissingenRef.current.saveData()
         } catch (error) {
-          console.error('Error saving vakantie data:', error)
+          console.error('Error saving regelingen data:', error)
           notifications.show({
             title: 'Fout',
-            message: 'Kon vakantieregelingen niet opslaan',
+            message: 'Kon regelingen niet opslaan',
             color: 'red'
           })
           return
@@ -411,47 +544,17 @@ export function DossierFormPage() {
         }
       }
       
-      // Save feestdagen data when moving from step 5 to 6
-      if (active === 5 && dossierId && feestdagenRef.current) {
-        try {
-          setLoading(true)
-          await feestdagenRef.current.saveData()
-        } catch (error) {
-          console.error('Error saving feestdagen data:', error)
-          notifications.show({
-            title: 'Fout',
-            message: 'Kon feestdagenregelingen niet opslaan',
-            color: 'red'
-          })
-          return
-        } finally {
-          setLoading(false)
-        }
-      }
-      
-      // Save bijzondere dagen data when moving from step 6 to 7
-      if (active === 6 && dossierId && bijzondereDagenRef.current) {
-        try {
-          setLoading(true)
-          await bijzondereDagenRef.current.saveData()
-        } catch (error) {
-          console.error('Error saving bijzondere dagen data:', error)
-          notifications.show({
-            title: 'Fout',
-            message: 'Kon bijzondere dagen regelingen niet opslaan',
-            color: 'red'
-          })
-          return
-        } finally {
-          setLoading(false)
-        }
-      }
-      
-      setActive((current) => current < 8 ? current + 1 : current)
+      setActive((current) => current < 5 ? current + 1 : current)
     }
   }
   
   const prevStep = () => {
+    // Handle substep navigation within Regelingen step
+    if (active === 4 && regelingenSubstep > 0) {
+      setRegelingenSubstep(regelingenSubstep - 1)
+      return
+    }
+    
     setActive((current) => {
       // In edit mode, don't go below step 1 (partijen selection)
       const minStep = isEdit ? 1 : 0
@@ -536,46 +639,37 @@ export function DossierFormPage() {
           description={isMobile ? undefined : "Gegevens"}
           allowStepSelect={canProceed(0)}
           disabled={isEdit}
+          icon={<IconFileText size={20} />}
         />
         <Stepper.Step 
           label="Partijen" 
           description={isMobile ? undefined : "Selecteren"}
           allowStepSelect={canProceed(1)}
+          icon={<IconUsers size={20} />}
         />
         <Stepper.Step 
           label="Kinderen" 
           description={isMobile ? undefined : "Toevoegen"}
           allowStepSelect={canProceed(2)}
+          icon={<IconUser size={20} />}
         />
         <Stepper.Step 
           label="Omgang" 
           description={isMobile ? undefined : "Regeling"}
           allowStepSelect={canProceed(3)}
+          icon={<IconClock size={20} />}
         />
         <Stepper.Step 
-          label="Vakanties" 
-          description={isMobile ? undefined : "Regelingen"}
+          label="Regelingen" 
+          description={isMobile ? undefined : "Zorgafspraken"}
           allowStepSelect={canProceed(4)}
-        />
-        <Stepper.Step 
-          label="Feestdagen" 
-          description={isMobile ? undefined : "Regelingen"}
-          allowStepSelect={canProceed(5)}
-        />
-        <Stepper.Step 
-          label="Bijzonder" 
-          description={isMobile ? undefined : "Dagen"}
-          allowStepSelect={canProceed(6)}
-        />
-        <Stepper.Step 
-          label="Beslissingen" 
-          description={isMobile ? undefined : "Overig"}
-          allowStepSelect={canProceed(7)}
+          icon={<IconSettings size={20} />}
         />
         <Stepper.Step 
           label="Controle" 
           description={isMobile ? undefined : "Overzicht"}
-          allowStepSelect={canProceed(8)}
+          allowStepSelect={canProceed(5)}
+          icon={<IconClipboardCheck size={20} />}
         />
         <Stepper.Completed>
           <Alert color="green" mb="xl">
@@ -626,46 +720,21 @@ export function DossierFormPage() {
         )}
 
         {active === 4 && (
-          <VakantiesStep
-            ref={vakantiesRef}
+          <RegelingenStepWithSubsteps
+            regelingenSubstep={regelingenSubstep}
+            setRegelingenSubstep={setRegelingenSubstep}
             dossierId={dossierId}
             kinderen={kinderen}
             partij1={partij1}
             partij2={partij2}
+            vakantiesRef={vakantiesRef}
+            feestdagenRef={feestdagenRef}
+            bijzondereDagenRef={bijzondereDagenRef}
+            beslissingenRef={beslissingenRef}
           />
         )}
 
         {active === 5 && (
-          <FeestdagenStep
-            ref={feestdagenRef}
-            dossierId={dossierId}
-            kinderen={kinderen}
-            partij1={partij1}
-            partij2={partij2}
-          />
-        )}
-
-        {active === 6 && (
-          <BijzondereDagenStep
-            ref={bijzondereDagenRef}
-            dossierId={dossierId}
-            kinderen={kinderen}
-            partij1={partij1}
-            partij2={partij2}
-          />
-        )}
-
-        {active === 7 && (
-          <BeslissingenStep
-            ref={beslissingenRef}
-            dossierId={dossierId}
-            kinderen={kinderen}
-            partij1={partij1}
-            partij2={partij2}
-          />
-        )}
-
-        {active === 8 && (
           <DossierOverviewStep
             dossierNummer={form.values.dossierNummer}
             partij1={partij1}
@@ -680,7 +749,7 @@ export function DossierFormPage() {
           <Button 
             variant="default" 
             onClick={prevStep}
-            disabled={active === (isEdit ? 1 : 0)}
+            disabled={!canGoBack()}
             leftSection={<IconArrowLeft size={16} />}
           >
             Vorige
@@ -693,10 +762,10 @@ export function DossierFormPage() {
           ) : (
             <Button 
               onClick={nextStep}
-              disabled={!canProceed(active)}
+              disabled={!canProceedFromCurrentStep()}
               rightSection={<IconArrowRight size={16} />}
             >
-              Volgende
+              {active === 4 && regelingenSubstep < 3 ? 'Volgende' : 'Volgende'}
             </Button>
           )}
         </Group>
