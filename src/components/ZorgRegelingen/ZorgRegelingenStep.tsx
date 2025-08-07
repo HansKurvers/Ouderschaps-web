@@ -722,7 +722,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                       variant={selectedTemplate ? "light" : "default"}
                       leftSection={<IconEdit size={16} />}
                       onClick={() => openTemplateModal(situatie.id)}
-                      disabled={regelingTemplates.length === 0}
+                      disabled={regelingTemplates.length === 0 && templateType !== 'Algemeen'}
                     >
                       {selectedTemplate ? "Wijzig regeling" : "Selecteer regeling"}
                     </Button>
@@ -811,7 +811,7 @@ export const ZorgRegelingenStep = React.forwardRef<ZorgRegelingenStepHandle, Zor
                             variant={selectedTemplate ? "light" : "default"}
                             leftSection={<IconEdit size={16} />}
                             onClick={() => openTemplateModal(15, regeling.tempId)}
-                            disabled={regelingTemplates.length === 0}
+                            disabled={regelingTemplates.length === 0 && templateType !== 'Algemeen'}
                             fullWidth
                           >
                             {selectedTemplate ? "Wijzig regeling template" : "Selecteer regeling template"}

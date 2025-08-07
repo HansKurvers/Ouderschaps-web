@@ -99,8 +99,8 @@ export function DossierFormPage() {
     loadRollen()
     if (paramDossierId) {
       loadDossier(paramDossierId)
-      // Skip dossier number step in edit mode
-      setActive(1)
+      // Open at step 9 (overview) when opening a finished document
+      setActive(8)
     }
   }, [paramDossierId])
 
@@ -655,6 +655,7 @@ export function DossierFormPage() {
             partij2={partij2}
             kinderen={kinderen}
             getVolledigeNaam={getVolledigeNaam}
+            dossierId={dossierId}
           />
         )}
 
