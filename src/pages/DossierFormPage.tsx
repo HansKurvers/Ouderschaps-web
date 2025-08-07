@@ -157,6 +157,7 @@ export function DossierFormPage() {
   
   const [active, setActive] = useState(0)
   const [regelingenSubstep, setRegelingenSubstep] = useState(0)
+  const [dossierNummerForOverview, setDossierNummerForOverview] = useState('')
   const [loading, setLoading] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [selectModalOpen, setSelectModalOpen] = useState(false)
@@ -208,6 +209,10 @@ export function DossierFormPage() {
       loadDossier(paramDossierId)
       // Open at step 6 (overview) when opening a finished document
       setActive(5)
+      // Scroll to top when opening directly to overview
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }, 100)
     }
   }, [paramDossierId])
 
@@ -246,7 +251,9 @@ export function DossierFormPage() {
         return
       }
       
-      form.setValues({ dossierNummer: getDossierNummer(dossier) })
+      const dossierNummer = getDossierNummer(dossier)
+      form.setValues({ dossierNummer })
+      setDossierNummerForOverview(dossierNummer)
       
       // Map de partijen naar partij1 en partij2
       const partij1Data = partijen.find(p => p.rol?.naam === 'Partij 1' || p.rolId === '1')
@@ -544,7 +551,16 @@ export function DossierFormPage() {
         }
       }
       
-      setActive((current) => current < 5 ? current + 1 : current)
+      setActive((current) => {
+        const newStep = current < 5 ? current + 1 : current
+        
+        // Scroll to top when navigating to overview step
+        if (newStep === 5) {
+          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50)
+        }
+        
+        return newStep
+      })
     }
   }
   
@@ -741,7 +757,7 @@ export function DossierFormPage() {
 
         {active === 5 && (
           <DossierOverviewStep
-            dossierNummer={form.values.dossierNummer}
+            dossierNummer={dossierNummerForOverview || form.values.dossierNummer}
             partij1={partij1}
             partij2={partij2}
             kinderen={kinderen}
@@ -760,7 +776,7 @@ export function DossierFormPage() {
             Vorige
           </Button>
           
-          {active === 8 ? (
+          {active === 5 ? (
             <Button onClick={handleSubmit} loading={loading}>
               {isEdit ? 'Opslaan' : 'Dossier Aanmaken'}
             </Button>
@@ -770,7 +786,7 @@ export function DossierFormPage() {
               disabled={!canProceedFromCurrentStep()}
               rightSection={<IconArrowRight size={16} />}
             >
-              {active === 4 && regelingenSubstep < 3 ? 'Volgende' : 'Volgende'}
+              Volgende
             </Button>
           )}
         </Group>
