@@ -206,8 +206,8 @@ export function DossierFormPage() {
     loadRollen()
     if (paramDossierId) {
       loadDossier(paramDossierId)
-      // Open at step 9 (overview) when opening a finished document
-      setActive(8)
+      // Open at step 6 (overview) when opening a finished document
+      setActive(5)
     }
   }, [paramDossierId])
 
@@ -583,54 +583,59 @@ export function DossierFormPage() {
         style={{ 
           overflowX: 'auto',
           overflowY: 'visible',
-          paddingBottom: rem(4)
+          paddingBottom: rem(8),
+          display: 'flex',
+          justifyContent: 'center'
         }}
       >
         <Stepper 
           active={active} 
           onStepClick={setActive}
-          size="xs"
+          size={isMobile ? "sm" : "md"}
           orientation={isMobile ? "vertical" : "horizontal"}
           styles={{
             root: {
               minWidth: isMobile ? undefined : 'max-content',
+              maxWidth: '100%',
             },
             content: {
               paddingTop: rem(0),
             },
             separator: {
-              marginLeft: rem(0),
-              marginRight: rem(0),
-              minWidth: rem(5),
-              maxWidth: rem(15),
+              marginLeft: rem(8),
+              marginRight: rem(8),
+              minWidth: rem(20),
+              maxWidth: rem(40),
             },
             step: {
-              padding: rem(2),
+              padding: rem(8),
               minWidth: 'auto',
             },
             stepIcon: {
-              width: rem(28),
-              height: rem(28),
-              minWidth: rem(28),
-              fontSize: rem(12),
+              width: rem(40),
+              height: rem(40),
+              minWidth: rem(40),
+              fontSize: rem(16),
+              border: '2px solid',
             },
             stepBody: {
-              marginTop: rem(2),
-              marginLeft: rem(4),
+              marginTop: rem(6),
+              marginLeft: rem(8),
               minWidth: 0,
             },
             stepLabel: {
-              fontSize: rem(11),
+              fontSize: rem(14),
               fontWeight: 600,
-              lineHeight: 1.2,
+              lineHeight: 1.3,
               whiteSpace: 'nowrap',
             },
             stepDescription: {
               display: isTablet ? 'none' : 'block',
-              fontSize: rem(10),
-              marginTop: rem(1),
-              lineHeight: 1.2,
+              fontSize: rem(12),
+              marginTop: rem(2),
+              lineHeight: 1.3,
               whiteSpace: 'nowrap',
+              opacity: 0.7,
             }
           }}
         >
