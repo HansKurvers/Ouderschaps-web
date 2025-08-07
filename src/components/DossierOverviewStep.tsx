@@ -32,6 +32,7 @@ export function DossierOverviewStep({
   const [loading, setLoading] = useState(true)
   const [dagen, setDagen] = useState<any[]>([])
   const [dagdelen, setDagdelen] = useState<any[]>([])
+  const [weekRegelingen, setWeekRegelingen] = useState<any[]>([])
 
   useEffect(() => {
     if (dossierId) {
@@ -44,16 +45,27 @@ export function DossierOverviewStep({
       setLoading(true)
       
       // Load reference data for omgang
-      const [dagenData, dagdelenData] = await Promise.all([
+      const [dagenData, dagdelenData, weekRegelingenData] = await Promise.all([
         omgangService.getDagen(),
-        omgangService.getDagdelen()
+        omgangService.getDagdelen(),
+        omgangService.getWeekRegelingen()
       ])
       setDagen(dagenData?.data || [])
       setDagdelen(dagdelenData?.data || [])
+      setWeekRegelingen(weekRegelingenData?.data || [])
       
       // Load omgang data
       const omgangResponse = await omgangService.getOmgangByDossier(dossierId!)
-      setOmgangData(omgangResponse?.data || [])
+      
+      // Handle the response structure - it returns {success: true, data: Array} or just Array
+      let omgangDataArray = []
+      if (omgangResponse && typeof omgangResponse === 'object' && 'data' in omgangResponse) {
+        omgangDataArray = omgangResponse.data || []
+      } else if (Array.isArray(omgangResponse)) {
+        omgangDataArray = omgangResponse
+      }
+      
+      setOmgangData(omgangDataArray)
       
       // Load zorg regelingen
       const zorgResponse = await zorgService.getZorgRegelingen(dossierId!)
@@ -71,16 +83,6 @@ export function DossierOverviewStep({
     return date.toLocaleDateString('nl-NL')
   }
 
-  const getPartijNaam = (verzorgerId?: string | null) => {
-    if (!verzorgerId) return '-'
-    if (partij1.persoon && (partij1.persoon.persoonId === verzorgerId || partij1.persoon._id === verzorgerId)) {
-      return partij1.persoon.roepnaam || partij1.persoon.voornamen || 'Partij 1'
-    }
-    if (partij2.persoon && (partij2.persoon.persoonId === verzorgerId || partij2.persoon._id === verzorgerId)) {
-      return partij2.persoon.roepnaam || partij2.persoon.voornamen || 'Partij 2'
-    }
-    return 'Onbekend'
-  }
 
   return (
     <Stack>
@@ -277,54 +279,115 @@ export function DossierOverviewStep({
       {/* Omgangsregeling Table */}
       {dossierId && (
         <Card withBorder p="md" shadow="sm">
-          <Group mb="md">
-            <IconClock size={20} />
-            <Title order={4}>Omgangsregeling</Title>
+          <Group mb="md" justify="space-between">
+            <Group gap="xs">
+              <IconClock size={20} />
+              <Title order={4}>Omgangsregeling</Title>
+            </Group>
+            {omgangData.length > 0 && (
+              <Group gap="xs">
+                <Badge color="blue" variant="filled" size="sm">1 = {partij1.persoon?.roepnaam || 'Partij 1'}</Badge>
+                <Badge color="orange" variant="filled" size="sm">2 = {partij2.persoon?.roepnaam || 'Partij 2'}</Badge>
+              </Group>
+            )}
           </Group>
           {loading ? (
             <Loader size="sm" />
           ) : omgangData.length > 0 ? (
-            <ScrollArea>
-              <Table striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Week</Table.Th>
-                    {dagen.map(dag => (
-                      <Table.Th key={dag.id}>{dag.naam}</Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {dagdelen.map(dagdeel => (
-                    <Table.Tr key={dagdeel.id}>
-                      <Table.Td fw={500}>{dagdeel.naam}</Table.Td>
-                      {dagen.map(dag => {
-                        const omgang = omgangData.find(o => 
-                          o.dagId === dag.id && o.dagdeelId === dagdeel.id
-                        )
-                        return (
-                          <Table.Td key={`${dag.id}-${dagdeel.id}`}>
-                            <Badge 
-                              size="sm" 
-                              variant="filled"
-                              color={omgang?.verzorgerId === partij1.persoon?.persoonId ? 'blue' : 
-                                     omgang?.verzorgerId === partij2.persoon?.persoonId ? 'orange' : 'gray'}
-                            >
-                              {getPartijNaam(omgang?.verzorgerId)}
-                            </Badge>
-                            {omgang?.wisselTijd && (
-                              <Text size="xs" c="dimmed" mt={2}>
-                                {omgang.wisselTijd}
-                              </Text>
-                            )}
-                          </Table.Td>
-                        )
-                      })}
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
+            <Stack gap="md">
+              {/* Group omgang data by week */}
+              {(() => {
+                // Group by weekRegeling.id from the nested object
+                const groupedByWeek = omgangData.reduce((acc, omgang) => {
+                  const weekId = omgang.weekRegeling?.id || omgang.weekRegelingId || 1
+                  if (!acc[weekId]) acc[weekId] = []
+                  acc[weekId].push(omgang)
+                  return acc
+                }, {} as Record<string | number, any[]>)
+                
+                return Object.entries(groupedByWeek).map(([weekId, weekOmgang]) => {
+                  const weekIdNum = parseInt(weekId.toString())
+                  const weekRegeling = weekRegelingen.find(w => w.id === weekIdNum)
+                  
+                  // Check if any omgang entry has weekRegelingAnders (custom week name)
+                  const firstOmgang = (weekOmgang as any[])[0]
+                  const customWeekName = firstOmgang?.weekRegelingAnders
+                  
+                  // Use omschrijving field from weekRegeling, not naam
+                  const weekNaam = customWeekName || weekRegeling?.omschrijving || firstOmgang?.weekRegeling?.omschrijving || `Week ${weekId}`
+                  
+                  // Create a map for wisseltijd per day for this week
+                  const wisselTijdPerDag = {} as any
+                  (weekOmgang as any[]).forEach((omgang: any) => {
+                    const dagId = omgang.dag?.id || omgang.dagId
+                    if (omgang.wisselTijd && dagId && !wisselTijdPerDag[dagId]) {
+                      wisselTijdPerDag[dagId] = omgang.wisselTijd
+                    }
+                  })
+                  
+                  return (
+                    <Stack key={weekId} gap="xs">
+                      <Text fw={600} size="sm">{weekNaam}</Text>
+                      <ScrollArea>
+                        <Table striped highlightOnHover withTableBorder>
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th>Dagdeel</Table.Th>
+                              {dagen.map(dag => (
+                                <Table.Th key={dag.id}>
+                                  <Stack gap={2} align="center">
+                                    <Text>{dag.naam}</Text>
+                                    {wisselTijdPerDag[dag.id] && (
+                                      <Text size="xs" c="dimmed">
+                                        Wissel: {wisselTijdPerDag[dag.id]}
+                                      </Text>
+                                    )}
+                                  </Stack>
+                                </Table.Th>
+                              ))}
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {dagdelen.map(dagdeel => (
+                              <Table.Tr key={dagdeel.id}>
+                                <Table.Td fw={500}>{dagdeel.naam}</Table.Td>
+                                {dagen.map(dag => {
+                                  const omgang = (weekOmgang as any[]).find((o: any) => {
+                                    const oDagId = o.dag?.id || o.dagId
+                                    const oDagdeelId = o.dagdeel?.id || o.dagdeelId
+                                    return oDagId === dag.id && oDagdeelId === dagdeel.id
+                                  })
+                                  
+                                  // verzorger.id should match party persoon.id
+                                  const verzorgerId = omgang?.verzorger?.id || omgang?.verzorgerId
+                                  const isPartij1 = verzorgerId && (verzorgerId === partij1.persoon?.id || verzorgerId.toString() === partij1.persoon?.id?.toString())
+                                  const isPartij2 = verzorgerId && (verzorgerId === partij2.persoon?.id || verzorgerId.toString() === partij2.persoon?.id?.toString())
+                                  
+                                  return (
+                                    <Table.Td key={`${dag.id}-${dagdeel.id}`} align="center">
+                                      {verzorgerId && (
+                                        <Badge 
+                                          size="lg" 
+                                          variant="filled"
+                                          color={isPartij1 ? 'blue' : isPartij2 ? 'orange' : 'gray'}
+                                          radius="xl"
+                                        >
+                                          {isPartij1 ? '1' : isPartij2 ? '2' : '-'}
+                                        </Badge>
+                                      )}
+                                    </Table.Td>
+                                  )
+                                })}
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </ScrollArea>
+                    </Stack>
+                  )
+                })
+              })()}
+            </Stack>
           ) : (
             <Text c="dimmed">Geen omgangsregeling ingesteld</Text>
           )}
