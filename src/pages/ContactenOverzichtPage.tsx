@@ -12,10 +12,13 @@ import {
   Loader,
   Alert,
   Text,
-  Badge
+  Badge,
+  Menu,
+  Modal
 } from '@mantine/core'
-import { IconPlus, IconEdit, IconSearch, IconSortAscending, IconSortDescending } from '@tabler/icons-react'
+import { IconPlus, IconEdit, IconSearch, IconSortAscending, IconSortDescending, IconTrash, IconDots } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { notifications } from '@mantine/notifications'
 import { persoonService } from '../services/persoon.service'
 import { dossierService } from '../services/dossier.service'
 import { Persoon } from '../types/api.types'
@@ -41,6 +44,8 @@ export function ContactenOverzichtPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('naam')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [persoonToDelete, setPersoonToDelete] = useState<Persoon | null>(null)
 
   useEffect(() => {
     loadPersonen()
@@ -119,6 +124,48 @@ export function ContactenOverzichtPage() {
     } else {
       setSortField(field)
       setSortOrder('asc')
+    }
+  }
+
+  const handleDeleteClick = (persoon: Persoon) => {
+    setPersoonToDelete(persoon)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!persoonToDelete) return
+    
+    const persoonId = persoonToDelete.id?.toString() || persoonToDelete.persoonId || persoonToDelete._id
+    
+    if (!persoonId) {
+      notifications.show({
+        title: 'Fout',
+        message: 'Kan persoon ID niet vinden',
+        color: 'red'
+      })
+      return
+    }
+    
+    try {
+      await persoonService.deletePersoon(persoonId)
+      
+      notifications.show({
+        title: 'Contact verwijderd',
+        message: `${getVolledigeNaam(persoonToDelete)} is succesvol verwijderd`,
+        color: 'green'
+      })
+      
+      // Reload de personen lijst
+      await loadPersonen()
+    } catch (err) {
+      notifications.show({
+        title: 'Fout',
+        message: 'Kon contact niet verwijderen',
+        color: 'red'
+      })
+    } finally {
+      setDeleteModalOpen(false)
+      setPersoonToDelete(null)
     }
   }
 
@@ -212,20 +259,56 @@ export function ContactenOverzichtPage() {
                   </Badge>
                 </Table.Td>
                 <Table.Td>
-                  <Button
-                    size="xs"
-                    variant="light"
-                    leftSection={<IconEdit size={16} />}
-                    onClick={() => navigate(`/contacten/bewerk/${persoon.id}`)}
-                  >
-                    Bewerk
-                  </Button>
+                  <Menu shadow="md" width={200}>
+                    <Menu.Target>
+                      <ActionIcon variant="subtle" color="gray">
+                        <IconDots size={16} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<IconEdit size={16} />}
+                        onClick={() => navigate(`/contacten/bewerk/${persoon.id}`)}
+                      >
+                        Bewerken
+                      </Menu.Item>
+                      <Menu.Divider />
+                      <Menu.Item
+                        color="red"
+                        leftSection={<IconTrash size={16} />}
+                        onClick={() => handleDeleteClick(persoon)}
+                      >
+                        Verwijderen
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       )}
+
+      <Modal
+        opened={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Contact verwijderen"
+      >
+        <Text mb="md">
+          Weet je zeker dat je <strong>{persoonToDelete && getVolledigeNaam(persoonToDelete)}</strong> wilt verwijderen?
+        </Text>
+        <Text c="dimmed" size="sm" mb="md">
+          Deze actie kan niet ongedaan worden gemaakt.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="default" onClick={() => setDeleteModalOpen(false)}>
+            Annuleren
+          </Button>
+          <Button color="red" onClick={handleDeleteConfirm}>
+            Verwijderen
+          </Button>
+        </Group>
+      </Modal>
     </Container>
   )
 }
