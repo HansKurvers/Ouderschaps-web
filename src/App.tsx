@@ -1,8 +1,7 @@
 import { MantineProvider, createTheme } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MainLayout } from './layouts/MainLayout'
-import { HomePage } from './pages/HomePage'
 import { AboutPage } from './pages/AboutPage'
 import { ContactPage } from './pages/ContactPage'
 import { DossiersPage } from './pages/DossiersPage'
@@ -65,7 +64,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<MainLayout />}>
-            <Route index element={<HomePage />} />
+            <Route index element={<Navigate to="/dossiers" replace />} />
             <Route path="dossiers" element={<DossiersPage />} />
             <Route path="dossiers/nieuw" element={<DossierFormPage />} />
             <Route path="dossiers/bewerk/:dossierId" element={<DossierFormPage />} />
