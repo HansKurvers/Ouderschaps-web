@@ -13,8 +13,9 @@ export interface IAuth0Client {
   loginWithRedirect(options?: any): Promise<void>
   logout(options?: any): void
   getAccessTokenSilently(options?: any): Promise<string>
-  getUser(): Promise<User | undefined>
-  isAuthenticated(): Promise<boolean>
+  getUser?(): Promise<User | undefined>
+  user?: User
+  isAuthenticated: (() => Promise<boolean>) | boolean
 }
 
 export class AuthService implements IAuthService {
@@ -39,16 +40,26 @@ export class AuthService implements IAuthService {
   }
 
   async getUserId(): Promise<string | null> {
-    const user = await this.auth0Client.getUser()
-    return user?.sub || null
+    if (this.auth0Client.getUser) {
+      const user = await this.auth0Client.getUser()
+      return user?.sub || null
+    }
+    return this.auth0Client.user?.sub || null
   }
 
   async isAuthenticated(): Promise<boolean> {
-    return await this.auth0Client.isAuthenticated()
+    const auth = this.auth0Client.isAuthenticated
+    if (typeof auth === 'boolean') {
+      return auth
+    }
+    return await auth()
   }
 
   async getUser(): Promise<User | undefined> {
-    return await this.auth0Client.getUser()
+    if (this.auth0Client.getUser) {
+      return await this.auth0Client.getUser()
+    }
+    return this.auth0Client.user
   }
 }
 

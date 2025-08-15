@@ -1,5 +1,6 @@
-import { createContext, useContext, ReactNode, useMemo } from 'react'
+import { createContext, useContext, ReactNode, useMemo, useEffect } from 'react'
 import { useAuth0, User } from '@auth0/auth0-react'
+import { initializeAuthService } from '../services/auth.service'
 
 interface AuthContextValue {
   isAuthenticated: boolean
@@ -18,6 +19,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const auth0 = useAuth0()
   const {
     isAuthenticated,
     isLoading,
@@ -25,7 +27,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loginWithRedirect,
     logout: auth0Logout,
     getAccessTokenSilently,
-  } = useAuth0()
+  } = auth0
+
+  // Initialize auth service when Auth0 is ready
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        initializeAuthService(auth0)
+        console.debug('Auth service initialized')
+      } catch (error) {
+        console.error('Failed to initialize auth service:', error)
+      }
+    }
+  }, [isLoading, auth0])
 
   const userId = useMemo(() => {
     return user?.sub || null
