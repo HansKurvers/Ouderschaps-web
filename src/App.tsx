@@ -3,7 +3,9 @@ import { Notifications } from '@mantine/notifications'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Auth0Provider } from '@auth0/auth0-react'
 import { AuthProvider } from './contexts/AuthContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import { MainLayout } from './layouts/MainLayout'
+import { LoginPage } from './pages/LoginPage'
 import { AboutPage } from './pages/AboutPage'
 import { ContactPage } from './pages/ContactPage'
 import { DossiersPage } from './pages/DossiersPage'
@@ -92,7 +94,12 @@ function App() {
         >
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<MainLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }>
                 <Route index element={<Navigate to="/dossiers" replace />} />
                 <Route path="dossiers" element={<DossiersPage />} />
                 <Route path="dossiers/nieuw" element={<DossierFormPage />} />
