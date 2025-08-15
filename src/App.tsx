@@ -88,6 +88,7 @@ function App() {
           authorizationParams={{
             redirect_uri: redirectUri,
             audience: audience,
+            scope: "openid profile email offline_access"
           }}
           cacheLocation="localstorage"
           useRefreshTokens={true}

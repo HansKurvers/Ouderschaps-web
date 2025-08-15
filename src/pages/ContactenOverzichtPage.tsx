@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { 
   Container, 
   Title, 
@@ -39,6 +40,7 @@ interface PersoonWithDossiers extends Persoon {
 
 export function ContactenOverzichtPage() {
   const navigate = useNavigate()
+  const { isLoading: authLoading, isAuthenticated } = useAuth()
   const [personen, setPersonen] = useState<PersoonWithDossiers[]>([])
   const [filteredPersonen, setFilteredPersonen] = useState<PersoonWithDossiers[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,8 +52,11 @@ export function ContactenOverzichtPage() {
   const [persoonToDelete, setPersoonToDelete] = useState<PersoonWithDossiers | null>(null)
 
   useEffect(() => {
-    loadPersonen()
-  }, [])
+    // Only load data when auth is ready and user is authenticated
+    if (!authLoading && isAuthenticated) {
+      loadPersonen()
+    }
+  }, [authLoading, isAuthenticated])
 
   useEffect(() => {
     filterAndSortPersonen()

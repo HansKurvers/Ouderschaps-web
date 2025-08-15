@@ -1,119 +1,77 @@
+import { apiService } from './api.service'
 import { Omgang } from '../types/api.types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net'
-
 class OmgangService {
- 
-  private getHeaders(): HeadersInit {
-    return {
-      'Content-Type': 'application/json',
-      'x-user-id': '1' // Hardcoded for now, update when auth is implemented
-    }
-  }
-  //TODO update when auth is implemented
-
   async getOmgangByDossier(dossierId: string): Promise<any> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang`, {
-      headers: this.getHeaders()
-    })
-    
-    if (!response.ok) {
+    try {
+      return await apiService.get(`/api/dossiers/${dossierId}/omgang`)
+    } catch (error) {
+      console.error('Failed to fetch omgang data:', error)
       throw new Error('Failed to fetch omgang data')
     }
-    
-    return response.json()
   }
 
   async createOmgang(dossierId: string, data: any): Promise<Omgang> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data)
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      // Create omgang error
-      throw new Error(`Failed to create omgang: ${errorText}`)
+    try {
+      return await apiService.post(`/api/dossiers/${dossierId}/omgang`, data)
+    } catch (error: any) {
+      console.error('Failed to create omgang:', error)
+      throw new Error(`Failed to create omgang: ${error.message}`)
     }
-    
-    return response.json()
   }
 
   async updateOmgang(dossierId: string, omgangId: number, data: Partial<Omgang>): Promise<Omgang> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/${omgangId}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data)
-    })
-    
-    if (!response.ok) {
+    try {
+      return await apiService.put(`/api/dossiers/${dossierId}/omgang/${omgangId}`, data)
+    } catch (error) {
+      console.error('Failed to update omgang:', error)
       throw new Error('Failed to update omgang')
     }
-    
-    return response.json()
   }
 
   async deleteOmgang(dossierId: string, omgangId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/${omgangId}`, {
-      method: 'DELETE',
-      headers: this.getHeaders()
-    })
-    
-    if (!response.ok) {
+    try {
+      await apiService.delete(`/api/dossiers/${dossierId}/omgang/${omgangId}`)
+    } catch (error) {
+      console.error('Failed to delete omgang:', error)
       throw new Error('Failed to delete omgang')
     }
   }
 
   async getDagen(): Promise<any> {
-    const response = await fetch(`${API_URL}/api/lookups/dagen`, {
-      headers: this.getHeaders()
-    })
-    
-    if (!response.ok) {
+    try {
+      return await apiService.get('/api/lookups/dagen')
+    } catch (error) {
+      console.error('Failed to fetch dagen:', error)
       throw new Error('Failed to fetch dagen')
     }
-    
-    return response.json()
   }
 
   async getDagdelen(): Promise<any> {
-    const response = await fetch(`${API_URL}/api/lookups/dagdelen`, {
-      headers: this.getHeaders()
-    })
-    
-    if (!response.ok) {
+    try {
+      return await apiService.get('/api/lookups/dagdelen')
+    } catch (error) {
+      console.error('Failed to fetch dagdelen:', error)
       throw new Error('Failed to fetch dagdelen')
     }
-    
-    return response.json()
   }
 
   async getWeekRegelingen(): Promise<any> {
-    const response = await fetch(`${API_URL}/api/lookups/week-regelingen`, {
-      headers: this.getHeaders()
-    })
-    
-    if (!response.ok) {
+    try {
+      return await apiService.get('/api/lookups/week-regelingen')
+    } catch (error) {
+      console.error('Failed to fetch week regelingen:', error)
       throw new Error('Failed to fetch week regelingen')
     }
-    
-    return response.json()
   }
 
   async createOmgangBatch(dossierId: string, entries: any[]): Promise<any> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/batch`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({ entries })
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Failed to create omgang batch: ${errorText}`)
+    try {
+      return await apiService.post(`/api/dossiers/${dossierId}/omgang/batch`, { entries })
+    } catch (error: any) {
+      console.error('Failed to create omgang batch:', error)
+      throw new Error(`Failed to create omgang batch: ${error.message}`)
     }
-    
-    return response.json()
   }
 
   async upsertWeekData(dossierId: string, weekData: {
@@ -128,30 +86,21 @@ class OmgangService {
       }>
     }>
   }): Promise<any> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/week`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(weekData)
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Failed to upsert week data: ${errorText}`)
+    try {
+      return await apiService.post(`/api/dossiers/${dossierId}/omgang/week`, weekData)
+    } catch (error: any) {
+      console.error('Failed to upsert week data:', error)
+      throw new Error(`Failed to upsert week data: ${error.message}`)
     }
-    
-    return response.json()
   }
 
   async getWeekData(dossierId: string, weekRegelingId: number): Promise<any> {
-    const response = await fetch(`${API_URL}/api/dossiers/${dossierId}/omgang/week/${weekRegelingId}`, {
-      headers: this.getHeaders()
-    })
-    
-    if (!response.ok) {
+    try {
+      return await apiService.get(`/api/dossiers/${dossierId}/omgang/week/${weekRegelingId}`)
+    } catch (error) {
+      console.error('Failed to fetch week data:', error)
       throw new Error('Failed to fetch week data')
     }
-    
-    return response.json()
   }
 }
 

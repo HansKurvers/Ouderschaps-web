@@ -166,9 +166,9 @@ export function DossierOverviewStep({
                 opacity: 0.6,
               },
               '&:not(:disabled):not(:hover)': {
-                animation: dossierId ? 'subtle-glow 4s ease-in-out infinite' : 'none',
+                animation: dossierId ? 'subtleGlow 4s ease-in-out infinite' : 'none',
               },
-              '@keyframes subtle-glow': {
+              '@keyframes subtleGlow': {
                 '0%, 100%': {
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 },

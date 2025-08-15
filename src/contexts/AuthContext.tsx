@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Initialize auth service when Auth0 is ready
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && isAuthenticated) {
       try {
         initializeAuthService(auth0)
         console.debug('Auth service initialized')
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.error('Failed to initialize auth service:', error)
       }
     }
-  }, [isLoading, auth0])
+  }, [isLoading, isAuthenticated, auth0])
 
   const userId = useMemo(() => {
     return user?.sub || null

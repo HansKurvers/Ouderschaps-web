@@ -3,6 +3,7 @@ import { Container, Title, Table, Button, Group, Loader, Alert, Paper, Text, Act
 import { IconPlus, IconEdit, IconTrash, IconDots } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'
+import { useAuth } from '../contexts/AuthContext'
 import { dossierService } from '../services/dossier.service'
 import { Dossier } from '../types/api.types'
 
@@ -12,13 +13,17 @@ interface DossierWithDisplay extends Dossier {
 
 export function DossiersPage() {
   const navigate = useNavigate()
+  const { isLoading: authLoading, isAuthenticated } = useAuth()
   const [dossiers, setDossiers] = useState<DossierWithDisplay[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadDossiers()
-  }, [])
+    // Only load data when auth is ready and user is authenticated
+    if (!authLoading && isAuthenticated) {
+      loadDossiers()
+    }
+  }, [authLoading, isAuthenticated])
 
   const loadDossiers = async () => {
     try {

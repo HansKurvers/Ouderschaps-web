@@ -106,7 +106,15 @@ export class ApiService {
         }
       }
 
-      const responseData = await response.json()
+      // Handle empty responses (like 500 errors with no body)
+      let responseData
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const text = await response.text()
+        responseData = text ? JSON.parse(text) : {}
+      } else {
+        responseData = {}
+      }
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} - ${JSON.stringify(responseData)}`)
@@ -149,6 +157,25 @@ export class ApiService {
   // DELETE request
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' })
+  }
+
+  // Debug auth token
+  async debugAuth(): Promise<any> {
+    const headers = await this.getAuthHeaders()
+    const token = headers.get('Authorization')
+    
+    console.log('Testing auth with token:', token)
+    
+    const response = await fetch('https://ouderschaps-api-fvgbfwachxabawgs.westeurope-01.azurewebsites.net/api/health/auth-debug', {
+      method: 'POST',
+      headers: {
+        'Authorization': token || ''
+      }
+    })
+    
+    const result = await response.json()
+    console.log('Auth debug result:', result)
+    return result
   }
 }
 
